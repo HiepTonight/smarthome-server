@@ -16,3 +16,5 @@ mqtt:
   port: 8883
   username: my_mqtt
   password: hellomqtt
+  device:
+    topic: "device_control"

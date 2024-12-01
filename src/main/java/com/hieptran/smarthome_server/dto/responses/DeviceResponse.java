@@ -15,17 +15,23 @@ public class DeviceResponse {
 
     private LocalDateTime updatedAt;
 
+    private String id;
+
     private String name;
 
     private String description;
 
     private int status;
 
+    private String icon;
+
     public static DeviceResponse fromDevice(Device device) {
         return DeviceResponse.builder()
+                .id(device.getId().toHexString())
                 .name(device.getName())
                 .description(device.getDescription())
                 .status(device.getStatus())
+                .icon(device.getIcon())
                 .createdAt(device.getCreatedAt())
                 .updatedAt(device.getUpdatedAt())
                 .build();

@@ -1,5 +1,6 @@
 package com.hieptran.smarthome_server.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hieptran.smarthome_server.dto.ApiResponse;
 import com.hieptran.smarthome_server.dto.StatusCodeEnum;
 import com.hieptran.smarthome_server.dto.builder.ResponseBuilder;
@@ -9,11 +10,12 @@ import com.hieptran.smarthome_server.model.Device;
 import com.hieptran.smarthome_server.repository.DeviceRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
-import org.bson.types.ObjectId;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -22,11 +24,14 @@ import java.util.stream.Collectors;
 public class DeviceService {
     private final DeviceRepository deviceRepository;
 
+    private final MqttService mqttService;
+
     public ResponseEntity<ApiResponse<DeviceResponse>> createDevice(DeviceRequest deviceRequest) {
         Device device = Device.builder()
                 .name(deviceRequest.getName())
                 .description(deviceRequest.getDescription())
                 .status(0)
+                .icon(deviceRequest.getIcon())
                 .build();
 
         try {
@@ -41,18 +46,20 @@ public class DeviceService {
     }
 
     public ResponseEntity<ApiResponse<List<DeviceResponse>>> getDevices() {
-        List<DeviceResponse> devices;
-
         try {
-            devices = deviceRepository.findAll()
-                    .stream()
+            List<DeviceResponse> deviceResponses = deviceRepository.findAll().stream()
                     .map(DeviceResponse::fromDevice)
                     .toList();
-        } catch (Exception e) {
-            return ResponseBuilder.badRequestResponse("Failed to get all devices", StatusCodeEnum.EXCEPTION);
-        }
+            if (deviceResponses.isEmpty()) {
+                return ResponseBuilder.badRequestResponse("No devices found", StatusCodeEnum.DEVICE0300);
+            }
 
-        return ResponseBuilder.successResponse("Devices data", devices, StatusCodeEnum.DEVICE0200);
+//            System.out.println(getNameAndStatus());
+
+            return ResponseBuilder.successResponse("Devices found", deviceResponses, StatusCodeEnum.DEVICE0200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse("Failed to get devices", StatusCodeEnum.EXCEPTION);
+        }
     }
 
     public ResponseEntity<ApiResponse<DeviceResponse>> triggerDevice(String deviceId) {
@@ -68,7 +75,7 @@ public class DeviceService {
 
             deviceRepository.save(device);
 
-            //Mqtt service
+            mqttService.publish(getNameAndStatus());
 
             DeviceResponse response = DeviceResponse.fromDevice(device);
             return ResponseBuilder.successResponse("Device triggered", response, StatusCodeEnum.DEVICE0300);
@@ -77,5 +84,52 @@ public class DeviceService {
             return ResponseBuilder.badRequestResponse("An error occurred: " + e.getMessage(), StatusCodeEnum.EXCEPTION);
         }
     }
+
+    public ResponseEntity<ApiResponse<Objects>> deleteDevice(String deviceId) {
+        try {
+            Optional<Device> optionalDevice = deviceRepository.findById(deviceId);
+            if (optionalDevice.isEmpty()) {
+                return ResponseBuilder.badRequestResponse("Failed to find device", StatusCodeEnum.EXCEPTION);
+            }
+
+            try {
+                deviceRepository.deleteById(deviceId);
+            } catch (Exception e) {
+                return ResponseBuilder.badRequestResponse("Failed to delete device", StatusCodeEnum.EXCEPTION);
+            }
+
+            return ResponseBuilder.successResponse("Device deleted", StatusCodeEnum.DEVICE0200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse("Delete device failed: " + e.getMessage(), StatusCodeEnum.EXCEPTION);
+        }
+    }
+
+    private String getNameAndStatus() {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        try {
+            List<Device> devices = deviceRepository.findAll();
+            if (devices.isEmpty()) {
+                throw new RuntimeException();
+            }
+
+
+            Map<String, Integer> deviceNamesAndStatuses = devices.stream()
+                    .collect(Collectors.toMap(
+                            device -> device.getName().toLowerCase().replace(" ", "_"),
+                            Device::getStatus
+                    ));
+
+            return objectMapper.writeValueAsString(deviceNamesAndStatuses);
+        }
+        catch (Exception e) {
+            throw new RuntimeException();
+        }
+    }
+
+//    @PostConstruct
+//    public void init() {
+//       deviceRepository.deleteAll();
+//    }
 
 }
