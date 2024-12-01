@@ -13,4 +13,6 @@ public class DeviceRequest {
     private Boolean status;
 
     private String description;
+
+    private String icon;
 }

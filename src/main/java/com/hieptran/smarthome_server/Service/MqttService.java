@@ -5,6 +5,7 @@ import com.hieptran.smarthome_server.dto.requests.SensorDataRequest;
 import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -16,6 +17,9 @@ public class MqttService {
     private final Mqtt5AsyncClient client;
 
     private final SensorDataService sensorDataService;
+
+    @Value("${mqtt.device.topic}")
+    private String topic;
 
     @PostConstruct
     public void MqttService1() {
@@ -47,6 +51,22 @@ public class MqttService {
                     } else {
                         System.out.println("Subcribe thành công topic");
                         // Handle successful subscription,   e.g. logging or incrementing a metric
+                    }
+                });
+    }
+
+    public void publish(String message) {
+        client.publishWith()
+                .topic(topic)
+                .payload(message.getBytes(StandardCharsets.UTF_8))
+                .send()
+                .whenComplete((mqtt5Publish, throwable) -> {
+                    if (throwable != null) {
+                        // Handle failure to publish
+                        System.err.println("Lỗi khi publish: " + throwable.getMessage());
+                    } else {
+                        // Handle successful publish, e.g. logging or incrementing a metric
+                        System.out.println("Publish thành công: " + mqtt5Publish);
                     }
                 });
     }

@@ -9,9 +9,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
-@RequestMapping("/device")
+@RequestMapping("/devices")
 @RequiredArgsConstructor
 public class DeviceController {
     private final DeviceService deviceService;
@@ -26,8 +27,13 @@ public class DeviceController {
         return deviceService.createDevice(deviceRequest);
     }
 
-    @PostMapping("/{id}")
+    @PostMapping("/{id}/trigger")
     public ResponseEntity<ApiResponse<DeviceResponse>> triggerDevice(@PathVariable("id") String id) {
         return deviceService.triggerDevice(id);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Objects>> deleteDevice(@PathVariable("id") String id) {
+        return deviceService.deleteDevice(id);
     }
 }
