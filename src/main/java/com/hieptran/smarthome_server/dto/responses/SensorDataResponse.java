@@ -4,6 +4,7 @@ import com.hieptran.smarthome_server.model.SensorData;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
