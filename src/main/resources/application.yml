@@ -18,3 +18,7 @@ mqtt:
   password: hellomqtt
   device:
     topic: "device_control"
+
+socket-server:
+  port: 18085
+  host: 192.168.0.105

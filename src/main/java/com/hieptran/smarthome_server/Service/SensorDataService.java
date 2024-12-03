@@ -17,8 +17,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -26,6 +28,8 @@ import java.util.stream.IntStream;
 @RequiredArgsConstructor
 public class SensorDataService {
     private final SensorDataRepository sensorDataRepository;
+
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public void saveSensorData(SensorDataRequest sensorDataRequest) {
         SensorData sensorData = SensorData.builder()
@@ -58,15 +62,13 @@ public class SensorDataService {
     }
 
     public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getTodaySensorData() {
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        LocalDateTime now = LocalDateTime.now();
-        return getSensorDataGroupedByInterval(startOfDay, now, 3);
+        LocalDate date = LocalDate.now();
+        return getSensorDataAtIntervals(date);
     }
 
     public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getYesterdaySensorData() {
-        LocalDateTime startOfYesterday = LocalDate.now().minusDays(1).atStartOfDay();
-        LocalDateTime endOfYesterday = LocalDate.now().atStartOfDay();
-        return getSensorDataGroupedByInterval(startOfYesterday, endOfYesterday, 3);
+        LocalDate date = LocalDate.now().minusDays(1);
+        return getSensorDataAtIntervals(date);
     }
 
     public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getLast7DaysSensorData() {
@@ -81,10 +83,11 @@ public class SensorDataService {
         Map<LocalDate, List<SensorData>> groupedByDay = sensorDataList.stream()
                 .collect(Collectors.groupingBy(sensorData -> sensorData.getCreatedAt().toLocalDate()));
 
-        List<SensorDataResponse> sensorDataResponses = groupedByDay.entrySet().stream()
-                .map(entry -> {
-                    LocalDate date = entry.getKey();
-                    List<SensorData> dailyData = entry.getValue();
+        List<LocalDate> allDates = from.toLocalDate().datesUntil(to.toLocalDate().plusDays(1)).collect(Collectors.toList());
+
+        List<SensorDataResponse> sensorDataResponses = allDates.stream()
+                .map(date -> {
+                    List<SensorData> dailyData = groupedByDay.getOrDefault(date, List.of());
 
                     double avgTemp = dailyData.stream().mapToDouble(SensorData::getTemp).average().orElse(0);
                     double avgHumi = dailyData.stream().mapToDouble(SensorData::getHumi).average().orElse(0);
@@ -94,7 +97,7 @@ public class SensorDataService {
                             .temp((float) avgTemp)
                             .light((float) avgLight)
                             .humi((float) avgHumi)
-                            .createdAt(date.atStartOfDay())
+                            .createdAt(date.atStartOfDay().format(formatter))
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -102,18 +105,20 @@ public class SensorDataService {
         return ResponseBuilder.successResponse("Get sensor data successful", sensorDataResponses, StatusCodeEnum.SENSOR0200);
     }
 
-    private ResponseEntity<ApiResponse<List<SensorDataResponse>>> getSensorDataGroupedByInterval(LocalDateTime from, LocalDateTime to, int hours) {
-        List<SensorData> sensorDataList = sensorDataRepository.findByCreatedAtBetween(from, to);
+    public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getSensorDataAtIntervals(LocalDate date) {
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+        List<LocalDateTime> intervals = IntStream.range(0, 8)
+                .mapToObj(i -> startOfDay.plusHours(i * 3))
+                .collect(Collectors.toList());
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
-        List<SensorDataResponse> sensorDataResponses = IntStream.range(0, (int) ChronoUnit.HOURS.between(from, to) / hours + 1)
-                .mapToObj(i -> from.plusHours(i * hours))
-                .map(targetTime -> {
+        List<SensorData> sensorDataList = sensorDataRepository.findByCreatedAtBetween(startOfDay, endOfDay);
+
+        List<SensorDataResponse> sensorDataResponses = intervals.stream()
+                .map(interval -> {
                     SensorData closestData = sensorDataList.stream()
-                            .min((d1, d2) -> Long.compare(
-                                    Math.abs(ChronoUnit.SECONDS.between(d1.getCreatedAt(), targetTime)),
-                                    Math.abs(ChronoUnit.SECONDS.between(d2.getCreatedAt(), targetTime))
-                            ))
+                            .filter(data -> Math.abs(ChronoUnit.MINUTES.between(data.getCreatedAt(), interval)) <= 30)
+                            .min(Comparator.comparingLong(data -> Math.abs(ChronoUnit.MINUTES.between(data.getCreatedAt(), interval))))
                             .orElse(null);
 
                     if (closestData != null) {
@@ -121,13 +126,17 @@ public class SensorDataService {
                                 .temp(closestData.getTemp())
                                 .light(closestData.getLight())
                                 .humi(closestData.getHumi())
-                                .createdAt(closestData.getCreatedAt())
+                                .createdAt(closestData.getCreatedAt().format(formatter))
                                 .build();
                     } else {
-                        return null;
+                        return SensorDataResponse.builder()
+                                .temp(0.0f)
+                                .light(0.0f)
+                                .humi(0.0f)
+                                .createdAt(interval.format(formatter))
+                                .build();
                     }
                 })
-                .filter(response -> response != null)
                 .collect(Collectors.toList());
 
         return ResponseBuilder.successResponse("Get sensor data successful", sensorDataResponses, StatusCodeEnum.SENSOR0200);
