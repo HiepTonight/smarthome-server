@@ -15,7 +15,7 @@ RUN chown -R smarthome:smarthome /run
 
 USER smarthome
 
-EXPOSE 8888
+EXPOSE 8080 8081
 
 ENV JAVA_OPTIONS="-Xmx2048m -Xms256m"
 ENTRYPOINT java -jar /run/smarthome-server-0.0.1-SNAPSHOT.jar
