@@ -108,9 +108,11 @@ public class SensorDataService {
     public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getSensorDataAtIntervals(LocalDate date) {
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+        LocalDateTime now = LocalDateTime.now();
         List<LocalDateTime> intervals = IntStream.range(0, 8)
                 .mapToObj(i -> startOfDay.plusHours(i * 3))
-                .collect(Collectors.toList());
+                .filter(interval -> interval.isBefore(now))
+                .toList();
 
         List<SensorData> sensorDataList = sensorDataRepository.findByCreatedAtBetween(startOfDay, endOfDay);
 
@@ -138,6 +140,20 @@ public class SensorDataService {
                     }
                 })
                 .collect(Collectors.toList());
+
+        SensorData currentData = sensorDataList.stream()
+                .filter(data -> Math.abs(ChronoUnit.MINUTES.between(data.getCreatedAt(), now)) <= 30)
+                .min(Comparator.comparingLong(data -> Math.abs(ChronoUnit.MINUTES.between(data.getCreatedAt(), now))))
+                .orElse(null);
+
+        if (currentData != null) {
+            sensorDataResponses.add(SensorDataResponse.builder()
+                    .temp(currentData.getTemp())
+                    .light(currentData.getLight())
+                    .humi(currentData.getHumi())
+                    .createdAt(currentData.getCreatedAt().format(formatter))
+                    .build());
+        }
 
         return ResponseBuilder.successResponse("Get sensor data successful", sensorDataResponses, StatusCodeEnum.SENSOR0200);
     }
