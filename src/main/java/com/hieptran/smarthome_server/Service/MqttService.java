@@ -29,7 +29,6 @@ public class MqttService {
                 .topicFilter("sensorData")
                 .callback(publish -> {
                     publish.getPayload().ifPresent(payload -> {
-                        // Chuyển ByteBuffer sang chuỗi UTF-8
 //                        String message = StandardCharsets.UTF_8.decode(payload).toString();
 //                        System.out.println("Received Data: " + message);
                         byte[] data = new byte[payload.remaining()];

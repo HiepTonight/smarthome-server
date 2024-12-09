@@ -77,6 +77,8 @@ public class SensorDataService {
         return getSensorDataGroupedByDay(sevenDaysAgo, now);
     }
 
+//    public void handleCameraRequest
+
     private ResponseEntity<ApiResponse<List<SensorDataResponse>>> getSensorDataGroupedByDay(LocalDateTime from, LocalDateTime to) {
         List<SensorData> sensorDataList = sensorDataRepository.findByCreatedAtBetween(from, to);
 
