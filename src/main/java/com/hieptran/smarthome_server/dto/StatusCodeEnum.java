@@ -22,6 +22,12 @@ public enum StatusCodeEnum {
     DEVICE0200("DEVICE0200"), // Order get/saved failed
     DEVICE0300("DEIVDE0300"), //Cannot find device
 
+    USER1200("USER1200"), // User created successfully
+    USER0200("USER0200"), // User get/saved failed
+
+    HOME1200("HOME1200"), // Home created successfully
+    HOME0200("HOME0200"), // Home get/saved failed
+
     SENSOR1200("SENSOR1200"),
     SENSOR0200("SENSOR1200");
 

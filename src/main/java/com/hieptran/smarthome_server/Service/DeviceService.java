@@ -5,8 +5,11 @@ import com.hieptran.smarthome_server.dto.ApiResponse;
 import com.hieptran.smarthome_server.dto.StatusCodeEnum;
 import com.hieptran.smarthome_server.dto.builder.ResponseBuilder;
 import com.hieptran.smarthome_server.dto.requests.DeviceRequest;
+import com.hieptran.smarthome_server.dto.requests.SettingRequest;
+import com.hieptran.smarthome_server.dto.requests.TempAutoRequest;
 import com.hieptran.smarthome_server.dto.responses.DeviceResponse;
 import com.hieptran.smarthome_server.model.Device;
+import com.hieptran.smarthome_server.model.Home;
 import com.hieptran.smarthome_server.repository.DeviceRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -104,6 +107,18 @@ public class DeviceService {
         }
     }
 
+//    public void applyDeviceSetting(SettingRequest settingRequest) {
+//        try {
+//            Optional<Home> home = deviceRepository.findById(settingRequest.getHomeId());
+//        } catch (Exception e) {
+//            throw new RuntimeException("Failed to apply device setting");
+//        }
+//    }
+
+    private <T> void processSetting(T setting ) {
+
+    }
+
     private String getNameAndStatus() {
         ObjectMapper objectMapper = new ObjectMapper();
 
@@ -126,10 +141,4 @@ public class DeviceService {
             throw new RuntimeException();
         }
     }
-
-//    @PostConstruct
-//    public void init() {
-//       deviceRepository.deleteAll();
-//    }
-
 }

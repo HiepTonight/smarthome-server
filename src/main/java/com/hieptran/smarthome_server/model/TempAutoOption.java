@@ -18,7 +18,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TempAutoOption {
+public class TempAutoOption implements AutoOption {
     @Id
     private ObjectId id;
 
@@ -30,15 +30,25 @@ public class TempAutoOption {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    @Field("homeOptionId")
-    private HomeOption homeOptionId;
-
     @Field("greaterThanTemp")
-    private float greaterThanTemp;
+    private Float high;
 
     @Field("lessThanTemp")
-    private float lessThanTemp;
+    private Float low;
 
-    @Field("DeviceTrigger")
-    private List<Device> devices;
+    @Field("highDevices")
+    private List<DeviceAuto> highDevices;
+
+    @Field("lowDevices")
+    private List<DeviceAuto> lowDevices;
+
+    @Override
+    public Object getGreaterThan() {
+        return high;
+    }
+
+    @Override
+    public Object getLessThan() {
+        return low;
+    }
 }

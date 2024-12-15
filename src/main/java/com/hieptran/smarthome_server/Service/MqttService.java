@@ -26,6 +26,26 @@ public class MqttService {
         ObjectMapper objectMapper = new ObjectMapper();
 
         client.subscribeWith()
+                .topicFilter("lightAuto")
+                .callback(publish -> {
+                    publish.getPayload().ifPresent(payload -> {
+                        byte[] data = new byte[payload.remaining()];
+                        payload.get(data);
+//                        System.out.println("Received Data: " + new String(data));
+
+                    });
+                })
+                .send()
+                .whenComplete((subAck, throwable) -> {
+                    if (throwable != null) {
+                        // Handle failure to subscribe
+                    } else {
+                        System.out.println("Subcribe thành công topic");
+                        // Handle successful subscription,   e.g. logging or incrementing a metric
+                    }
+                });
+
+        client.subscribeWith()
                 .topicFilter("sensorData")
                 .callback(publish -> {
                     publish.getPayload().ifPresent(payload -> {
@@ -36,7 +56,7 @@ public class MqttService {
                         try {
                             SensorDataRequest sensorDataRequest = objectMapper.readValue(data, SensorDataRequest.class);
                             sensorDataService.saveSensorData(sensorDataRequest);
-                            System.out.println("Parsed Sensor Data: " + sensorDataRequest);
+//                            System.out.println("Parsed Sensor Data: " + sensorDataRequest);
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }

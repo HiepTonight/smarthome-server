@@ -42,4 +42,5 @@ public class SensorDataController {
     public ResponseEntity<ApiResponse<SensorDataResponse>> getLatestSensorData() {
         return sensorDataService.getLatestSensorData();
     }
+
 }
