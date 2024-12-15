@@ -18,7 +18,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class HumiAutoOption {
+public class HumiAutoOption implements AutoOption {
     @Id
     private ObjectId id;
 
@@ -30,15 +30,25 @@ public class HumiAutoOption {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    @Field("homeOptionId")
-    private HomeOption homeOptionId;
+    @Field("high")
+    private Float high;
 
-    @Field("greaterThanHumi")
-    private float greaterThanHumi;
+    @Field("low")
+    private Float low;
 
-    @Field("lessThanTemp")
-    private float lessThanHumi;
+    @Field("highDevices")
+    private List<DeviceAuto> highDevices;
 
-    @Field("DeviceTrigger")
-    private List<Device> devices;
+    @Field("lowDevices")
+    private List<DeviceAuto> lowDevices;
+
+    @Override
+    public Object getGreaterThan() {
+        return high;
+    }
+
+    @Override
+    public Object getLessThan() {
+        return low;
+    }
 }

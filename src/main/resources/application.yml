@@ -18,6 +18,7 @@ mqtt:
   password: hellomqtt
   device:
     topic: "device_control"
+  homeId: 675d1648a9e8034a78b32495
 
 socket-server:
   port: 8081

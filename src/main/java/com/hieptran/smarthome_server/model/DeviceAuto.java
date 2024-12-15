@@ -5,37 +5,35 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 
 @Data
-@Document("homeOptions")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class HomeOption {
+public class DeviceAuto {
     @Id
     private ObjectId id;
 
-    @Field("createdAt")
-    @CreatedDate
-    private LocalDateTime createdAt;
+//    @Field("createdAt")
+//    @CreatedDate
+//    private LocalDateTime createdAt;
+//
+//    @Field("updatedAt")
+//    @LastModifiedDate
+//    private LocalDateTime updatedAt;
 
-    @Field("updatedAt")
-    @LastModifiedDate
-    private LocalDateTime updatedAt;
+    @Field("name")
+    private String name;
 
-    @Field("tempAutoOption")
-    private TempAutoOption tempAutoOption;
+    @Field("enabled")
+    private Boolean enabled;
 
-    @Field("humiAutoOption")
-    private HumiAutoOption humiAutoOption;
-
-    @Field("lightAutoOption")
-    private LightAutoOption lightAutoOption;
+    @Field("action")
+    private String action;
 }

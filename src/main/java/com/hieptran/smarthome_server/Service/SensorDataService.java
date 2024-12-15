@@ -1,18 +1,24 @@
 package com.hieptran.smarthome_server.Service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hieptran.smarthome_server.config.CacheConfig;
 import com.hieptran.smarthome_server.dto.ApiResponse;
 import com.hieptran.smarthome_server.dto.StatusCodeEnum;
 import com.hieptran.smarthome_server.dto.builder.ResponseBuilder;
 import com.hieptran.smarthome_server.dto.requests.SensorDataRequest;
 import com.hieptran.smarthome_server.dto.responses.SensorDataResponse;
-import com.hieptran.smarthome_server.dto.responses.SensorDataSummaryResponse;
+import com.hieptran.smarthome_server.model.DeviceAuto;
 import com.hieptran.smarthome_server.model.SensorData;
+import com.hieptran.smarthome_server.model.enumeration.SettingKey;
 import com.hieptran.smarthome_server.repository.SensorDataRepository;
-import jakarta.annotation.PostConstruct;
+import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -20,14 +26,22 @@ import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
 public class SensorDataService {
+    private final ObjectMapper objectMapper;
+
     private final SensorDataRepository sensorDataRepository;
+
+    private final CacheConfig cache;
+
+    private final Mqtt5AsyncClient client;
+
+    @Value("${mqtt.device.topic}")
+    private String topic;
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -39,6 +53,9 @@ public class SensorDataService {
                 .build();
         try {
             sensorDataRepository.save(sensorData);
+            processSensorData(sensorData.getTemp(), SettingKey.HIGHTEMP, SettingKey.LOWTEMP, SettingKey.HIGHTEMPDEVICES, SettingKey.LOWTEMPDEVICES);
+            processSensorData(sensorData.getHumi(), SettingKey.HIGHHUMI, SettingKey.LOWHUMI, SettingKey.HIGHHUMIDEVICES, SettingKey.LOWHUMIDEVICES);
+            processSensorData(sensorData.getLight(), SettingKey.HIGHLIGHT, SettingKey.LOWLIGHT, SettingKey.HIGHLIGHTDEVICES, SettingKey.LOWLIGHTDEVICES);
         } catch (Exception e) {
             throw new RuntimeException("Save sensor data failed");
         }
@@ -158,5 +175,50 @@ public class SensorDataService {
         }
 
         return ResponseBuilder.successResponse("Get sensor data successful", sensorDataResponses, StatusCodeEnum.SENSOR0200);
+    }
+
+    private <T extends Number> void processSensorData(T sensorData, SettingKey highKey, SettingKey lowKey, SettingKey highDevicesKey, SettingKey lowDevicesKey) throws JsonProcessingException {
+        if (sensorData == null) {
+            return;
+        }
+
+        Number highValue = (Number) cache.get(highKey.toString());
+        Number lowValue = (Number) cache.get(lowKey.toString());
+
+        if (highValue != null && sensorData.doubleValue() > highValue.doubleValue()) {
+            processDevices(highDevicesKey);
+        }
+
+        if (lowValue != null && sensorData.doubleValue() < lowValue.doubleValue()) {
+            processDevices(lowDevicesKey);
+        }
+    }
+
+    private void processDevices(SettingKey devicesKey) throws JsonProcessingException {
+        List<DeviceAuto> devices = (List<DeviceAuto>) cache.get(devicesKey.toString());
+        if (devices != null) {
+            Map<String, Integer> deviceStatus = devices.stream()
+                    .collect(Collectors.toMap(
+                            deviceAuto -> deviceAuto.getName().toLowerCase().replace(" ", "_"),
+                            deviceAuto -> "ON".equalsIgnoreCase(deviceAuto.getAction()) ? 1 : 0
+                    ));
+            publish(objectMapper.writeValueAsString(deviceStatus));
+        }
+    }
+
+    private void publish(String message) {
+        client.publishWith()
+                .topic(topic)
+                .payload(message.getBytes(StandardCharsets.UTF_8))
+                .send()
+                .whenComplete((mqtt5Publish, throwable) -> {
+                    if (throwable != null) {
+                        // Handle failure to publish
+                        System.err.println("Lỗi khi publish: " + throwable.getMessage());
+                    } else {
+                        // Handle successful publish, e.g. logging or incrementing a metric
+                        System.out.println("Publish thành công: " + mqtt5Publish);
+                    }
+                });
     }
 }

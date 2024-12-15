@@ -2,13 +2,19 @@ package com.hieptran.smarthome_server.dto.requests;
 
 import lombok.*;
 
+import java.util.List;
+
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class HumiAutoRequest {
-    private float greaterThanHumi;
+    private Float high;
 
-    private float lessThanHumi;
+    private Float low;
+
+    private List<DeviceAutoRequest> highDevices;
+
+    private List<DeviceAutoRequest> lowDevices;
 }

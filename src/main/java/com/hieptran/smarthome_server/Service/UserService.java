@@ -4,6 +4,7 @@ import com.hieptran.smarthome_server.dto.ApiResponse;
 import com.hieptran.smarthome_server.dto.StatusCodeEnum;
 import com.hieptran.smarthome_server.dto.builder.ResponseBuilder;
 import com.hieptran.smarthome_server.dto.requests.UserRequest;
+import com.hieptran.smarthome_server.dto.responses.UserResponse;
 import com.hieptran.smarthome_server.model.User;
 import com.hieptran.smarthome_server.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +18,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public ResponseEntity<ApiResponse<User>> createUser(UserRequest userRequest) {
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(UserRequest userRequest) {
         try {
             if (userRepository.existsByUsername(userRequest.getUsername())) {
                 return ResponseBuilder.badRequestResponse("Username is already taken", StatusCodeEnum.EXCEPTION);
@@ -29,17 +30,20 @@ public class UserService {
 
             User user = User.builder()
                     .username(userRequest.getUsername())
-                    .password(userRequest.getPassword())
+                    .password(passwordEncoder.encode(userRequest.getPassword()))
                     .email(userRequest.getEmail())
                     .displayName(userRequest.getDisplayName())
                     .role("client")
                     .isActivated(true)
-                    .password(passwordEncoder.encode(userRequest.getPassword()))
                     .build();
 
-            return ResponseBuilder.successResponse("User created", userRepository.save(user), StatusCodeEnum.LOGIN0201);
+            userRepository.save(user);
+
+            UserResponse userResponse = UserResponse.from(user);
+
+            return ResponseBuilder.successResponse("User created", userResponse, StatusCodeEnum.USER1200);
         } catch (Exception e) {
-            return ResponseBuilder.badRequestResponse("Failed to create User", StatusCodeEnum.EXCEPTION);
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
         }
     }
 }
