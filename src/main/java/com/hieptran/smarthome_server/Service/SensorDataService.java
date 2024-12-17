@@ -38,9 +38,7 @@ public class SensorDataService {
 
     private final CacheConfig cache;
 
-    private final Mqtt5AsyncClient client;
-
-    @Value("${mqtt.device.topic}")
+    @Value("${mqtt.topic.homepod}")
     private String topic;
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -50,27 +48,25 @@ public class SensorDataService {
                 .temp(sensorDataRequest.getTemp())
                 .humi(sensorDataRequest.getHumi())
                 .light(sensorDataRequest.getLight())
+                .homePodId(sensorDataRequest.getHomePodId())
                 .build();
         try {
             sensorDataRepository.save(sensorData);
-            processSensorData(sensorData.getTemp(), SettingKey.HIGHTEMP, SettingKey.LOWTEMP, SettingKey.HIGHTEMPDEVICES, SettingKey.LOWTEMPDEVICES);
-            processSensorData(sensorData.getHumi(), SettingKey.HIGHHUMI, SettingKey.LOWHUMI, SettingKey.HIGHHUMIDEVICES, SettingKey.LOWHUMIDEVICES);
-            processSensorData(sensorData.getLight(), SettingKey.HIGHLIGHT, SettingKey.LOWLIGHT, SettingKey.HIGHLIGHTDEVICES, SettingKey.LOWLIGHTDEVICES);
         } catch (Exception e) {
             throw new RuntimeException("Save sensor data failed");
         }
     }
 
-    public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getAllSensorData() {
-        List<SensorDataResponse> sensorDataResponses = sensorDataRepository.findAll()
+    public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getAllSensorDataWithHomePodId(String homePodId) {
+        List<SensorDataResponse> sensorDataResponses = sensorDataRepository.findAllByHomePodId(homePodId)
                 .stream()
                 .map(SensorDataResponse::fromSensorData)
                 .toList();
         return ResponseBuilder.successResponse("Get sensor data successfull", sensorDataResponses, StatusCodeEnum.SENSOR0200);
     }
 
-    public ResponseEntity<ApiResponse<SensorDataResponse>> getLatestSensorData() {
-        SensorData sensorData = sensorDataRepository.findFirstByOrderByIdDesc();
+    public ResponseEntity<ApiResponse<SensorDataResponse>> getLatestSensorData(String homePodId) {
+        SensorData sensorData = sensorDataRepository.findFirstByHomePodIdOrderByCreatedAtDesc(homePodId);
         if (sensorData == null) {
             return ResponseBuilder.badRequestResponse("No sensor data available", StatusCodeEnum.SENSOR0200);
         }
@@ -78,26 +74,26 @@ public class SensorDataService {
         return ResponseBuilder.successResponse("Get latest sensor data successfull", sensorDataResponse, StatusCodeEnum.SENSOR0200);
     }
 
-    public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getTodaySensorData() {
+    public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getTodaySensorData(String homePodId) {
         LocalDate date = LocalDate.now();
-        return getSensorDataAtIntervals(date);
+        return getSensorDataAtIntervals(date, homePodId);
     }
 
-    public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getYesterdaySensorData() {
+    public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getYesterdaySensorData(String homePodId) {
         LocalDate date = LocalDate.now().minusDays(1);
-        return getSensorDataAtIntervals(date);
+        return getSensorDataAtIntervals(date, homePodId);
     }
 
-    public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getLast7DaysSensorData() {
+    public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getLast7DaysSensorData(String homePodId) {
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
         LocalDateTime now = LocalDateTime.now();
-        return getSensorDataGroupedByDay(sevenDaysAgo, now);
+        return getSensorDataGroupedByDay(sevenDaysAgo, now, homePodId);
     }
 
 //    public void handleCameraRequest
 
-    private ResponseEntity<ApiResponse<List<SensorDataResponse>>> getSensorDataGroupedByDay(LocalDateTime from, LocalDateTime to) {
-        List<SensorData> sensorDataList = sensorDataRepository.findByCreatedAtBetween(from, to);
+    private ResponseEntity<ApiResponse<List<SensorDataResponse>>> getSensorDataGroupedByDay(LocalDateTime from, LocalDateTime to, String homePodId) {
+        List<SensorData> sensorDataList = sensorDataRepository.findByCreatedAtBetweenAndHomePodId(from, to, homePodId);
 
         Map<LocalDate, List<SensorData>> groupedByDay = sensorDataList.stream()
                 .collect(Collectors.groupingBy(sensorData -> sensorData.getCreatedAt().toLocalDate()));
@@ -124,7 +120,7 @@ public class SensorDataService {
         return ResponseBuilder.successResponse("Get sensor data successful", sensorDataResponses, StatusCodeEnum.SENSOR0200);
     }
 
-    public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getSensorDataAtIntervals(LocalDate date) {
+    public ResponseEntity<ApiResponse<List<SensorDataResponse>>> getSensorDataAtIntervals(LocalDate date, String homePodId) {
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
         LocalDateTime now = LocalDateTime.now();
@@ -133,7 +129,7 @@ public class SensorDataService {
                 .filter(interval -> interval.isBefore(now))
                 .toList();
 
-        List<SensorData> sensorDataList = sensorDataRepository.findByCreatedAtBetween(startOfDay, endOfDay);
+        List<SensorData> sensorDataList = sensorDataRepository.findByCreatedAtBetweenAndHomePodId(startOfDay, endOfDay, homePodId);
 
         List<SensorDataResponse> sensorDataResponses = intervals.stream()
                 .map(interval -> {
@@ -177,48 +173,32 @@ public class SensorDataService {
         return ResponseBuilder.successResponse("Get sensor data successful", sensorDataResponses, StatusCodeEnum.SENSOR0200);
     }
 
-    private <T extends Number> void processSensorData(T sensorData, SettingKey highKey, SettingKey lowKey, SettingKey highDevicesKey, SettingKey lowDevicesKey) throws JsonProcessingException {
-        if (sensorData == null) {
-            return;
-        }
-
-        Number highValue = (Number) cache.get(highKey.toString());
-        Number lowValue = (Number) cache.get(lowKey.toString());
-
-        if (highValue != null && sensorData.doubleValue() > highValue.doubleValue()) {
-            processDevices(highDevicesKey);
-        }
-
-        if (lowValue != null && sensorData.doubleValue() < lowValue.doubleValue()) {
-            processDevices(lowDevicesKey);
-        }
-    }
-
-    private void processDevices(SettingKey devicesKey) throws JsonProcessingException {
-        List<DeviceAuto> devices = (List<DeviceAuto>) cache.get(devicesKey.toString());
-        if (devices != null) {
-            Map<String, Integer> deviceStatus = devices.stream()
-                    .collect(Collectors.toMap(
-                            deviceAuto -> deviceAuto.getName().toLowerCase().replace(" ", "_"),
-                            deviceAuto -> "ON".equalsIgnoreCase(deviceAuto.getAction()) ? 1 : 0
-                    ));
-            publish(objectMapper.writeValueAsString(deviceStatus));
-        }
-    }
-
-    private void publish(String message) {
-        client.publishWith()
-                .topic(topic)
-                .payload(message.getBytes(StandardCharsets.UTF_8))
-                .send()
-                .whenComplete((mqtt5Publish, throwable) -> {
-                    if (throwable != null) {
-                        // Handle failure to publish
-                        System.err.println("Lỗi khi publish: " + throwable.getMessage());
-                    } else {
-                        // Handle successful publish, e.g. logging or incrementing a metric
-                        System.out.println("Publish thành công: " + mqtt5Publish);
-                    }
-                });
-    }
+//    private <T extends Number> void processSensorData(T sensorData, SettingKey highKey, SettingKey lowKey, SettingKey highDevicesKey, SettingKey lowDevicesKey) throws JsonProcessingException {
+//        if (sensorData == null) {
+//            return;
+//        }
+//
+//        Number highValue = (Number) cache.get(highKey.toString());
+//        Number lowValue = (Number) cache.get(lowKey.toString());
+//
+//        if (highValue != null && sensorData.doubleValue() > highValue.doubleValue()) {
+//            processDevices(highDevicesKey);
+//        }
+//
+//        if (lowValue != null && sensorData.doubleValue() < lowValue.doubleValue()) {
+//            processDevices(lowDevicesKey);
+//        }
+//    }
+//
+//    private void processDevices(SettingKey devicesKey) throws JsonProcessingException {
+//        List<DeviceAuto> devices = (List<DeviceAuto>) cache.get(devicesKey.toString());
+//        if (devices != null) {
+//            Map<String, Integer> deviceStatus = devices.stream()
+//                    .collect(Collectors.toMap(
+//                            deviceAuto -> deviceAuto.getName().toLowerCase().replace(" ", "_"),
+//                            deviceAuto -> "ON".equalsIgnoreCase(deviceAuto.getAction()) ? 1 : 0
+//                    ));
+//            publish(objectMapper.writeValueAsString(deviceStatus));
+//        }
+//    }
 }

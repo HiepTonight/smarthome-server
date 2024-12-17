@@ -19,12 +19,12 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class LightAutoOption implements AutoOption {
-    @Id
-    private ObjectId id;
-
-    @Field("createdAt")
-    @CreatedDate
-    private LocalDateTime createdAt;
+//    @Id
+//    private ObjectId id;
+//
+//    @Field("createdAt")
+//    @CreatedDate
+//    private LocalDateTime createdAt;
 
     @Field("updatedAt")
     @LastModifiedDate

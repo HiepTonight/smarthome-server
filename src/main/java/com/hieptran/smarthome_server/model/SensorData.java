@@ -29,6 +29,9 @@ public class SensorData {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
+    @Field("homePodId")
+    private String homePodId;
+
     @Field("temp")
     private float temp;
 

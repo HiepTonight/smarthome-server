@@ -16,4 +16,6 @@ public class HomeRequest {
     private String title;
 
     private String ownerId;
+
+    private String homePodId;
 }

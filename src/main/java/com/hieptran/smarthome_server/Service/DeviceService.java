@@ -13,6 +13,7 @@ import com.hieptran.smarthome_server.model.Home;
 import com.hieptran.smarthome_server.repository.DeviceRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -29,9 +30,13 @@ public class DeviceService {
 
     private final MqttService mqttService;
 
-    public ResponseEntity<ApiResponse<DeviceResponse>> createDevice(DeviceRequest deviceRequest) {
+    @Value("${mqtt.topic.homepod}")
+    private String topic;
+
+    public ResponseEntity<ApiResponse<DeviceResponse>> createDevice(DeviceRequest deviceRequest, String homeId) {
         Device device = Device.builder()
                 .name(deviceRequest.getName())
+                .homeId(homeId)
                 .description(deviceRequest.getDescription())
                 .status(0)
                 .icon(deviceRequest.getIcon())
@@ -48,9 +53,9 @@ public class DeviceService {
         return ResponseBuilder.successResponse("Device created", deviceResponse, StatusCodeEnum.DEVICE0200);
     }
 
-    public ResponseEntity<ApiResponse<List<DeviceResponse>>> getDevices() {
+    public ResponseEntity<ApiResponse<List<DeviceResponse>>> getAllDevicesWithHomeId(String homeId) {
         try {
-            List<DeviceResponse> deviceResponses = deviceRepository.findAll().stream()
+            List<DeviceResponse> deviceResponses = deviceRepository.findAllByHomeId(homeId).stream()
                     .map(DeviceResponse::fromDevice)
                     .toList();
             if (deviceResponses.isEmpty()) {
@@ -78,7 +83,7 @@ public class DeviceService {
 
             deviceRepository.save(device);
 
-            mqttService.publish(getNameAndStatus());
+            mqttService.publish(topic, getNameAndStatus());
 
             DeviceResponse response = DeviceResponse.fromDevice(device);
             return ResponseBuilder.successResponse("Device triggered", response, StatusCodeEnum.DEVICE0300);
