@@ -17,14 +17,14 @@ import java.util.Objects;
 public class DeviceController {
     private final DeviceService deviceService;
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<DeviceResponse>>> getDevices() {
-        return deviceService.getDevices();
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<List<DeviceResponse>>> getDevices(@PathVariable("id") String homeId) {
+        return deviceService.getAllDevicesWithHomeId(homeId);
     }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<DeviceResponse>> createDevice(@RequestBody DeviceRequest deviceRequest) {
-        return deviceService.createDevice(deviceRequest);
+    @PostMapping("/{id}")
+    public ResponseEntity<ApiResponse<DeviceResponse>> createDevice(@PathVariable("id") String homeId, @RequestBody DeviceRequest deviceRequest) {
+        return deviceService.createDevice(deviceRequest, homeId);
     }
 
     @PostMapping("/{id}/trigger")

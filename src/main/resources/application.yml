@@ -16,9 +16,14 @@ mqtt:
   port: 8883
   username: my_mqtt
   password: hellomqtt
-  device:
-    topic: "device_control"
+  topic:
+    device: "device_control"
+    homepod: "homePod/123"
   homeId: 675d1648a9e8034a78b32495
+
+jwt:
+  secret: ${JWT_SECRET:e54c785247bbe95014719bbf1fd494ff3ada0c854d333e0d8ee0af418e237ce1349146558ffe96a262fd2fb077821665c54986a4349491cd07689d39ee07e4f8}
+  expire: ${JWT_EXPIRE:1209600000}
 
 socket-server:
   port: 8081

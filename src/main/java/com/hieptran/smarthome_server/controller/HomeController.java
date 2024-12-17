@@ -27,6 +27,11 @@ public class HomeController {
         return homeService.getHome(id);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<Home>> updateHome(@RequestBody HomeRequest homeRequest, @PathVariable("id") String id) {
+        return homeService.updateHome(homeRequest, id);
+    }
+
     @GetMapping("/setting/{id}")
     public ResponseEntity<ApiResponse<HomeOption>> getSetting(@PathVariable("id") String id) {
         return homeService.getHomeOption(id);

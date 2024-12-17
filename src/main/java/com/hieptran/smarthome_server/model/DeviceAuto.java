@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @Builder
 public class DeviceAuto {
     @Id
-    private ObjectId id;
+    private String id;
 
 //    @Field("createdAt")
 //    @CreatedDate

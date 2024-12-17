@@ -2,14 +2,14 @@ package com.hieptran.smarthome_server.controller;
 
 import com.hieptran.smarthome_server.Service.UserService;
 import com.hieptran.smarthome_server.dto.ApiResponse;
+import com.hieptran.smarthome_server.dto.requests.AuthenticationRequest;
 import com.hieptran.smarthome_server.dto.requests.UserRequest;
+import com.hieptran.smarthome_server.dto.responses.UserLoginResponse;
 import com.hieptran.smarthome_server.dto.responses.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -20,6 +20,17 @@ public class UserController {
     @PostMapping
     public ResponseEntity<ApiResponse<UserResponse>> createUser(@RequestBody UserRequest userRequest) {
         return userService.createUser(userRequest);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<UserLoginResponse>> login(@RequestBody AuthenticationRequest authenticationRequest) {
+        return userService.login(authenticationRequest);
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> getUserInfo() {
+        return userService.getUserInfo();
     }
 
 }

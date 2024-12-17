@@ -19,16 +19,19 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class HomeOption {
-    @Id
-    private ObjectId id;
-
-    @Field("createdAt")
-    @CreatedDate
-    private LocalDateTime createdAt;
+//    @Id
+//    private ObjectId id;
+//
+//    @Field("createdAt")
+//    @CreatedDate
+//    private LocalDateTime createdAt;
 
     @Field("updatedAt")
     @LastModifiedDate
     private LocalDateTime updatedAt;
+
+    @Field("controlType")
+    private String controlType;
 
     @Field("tempAutoOption")
     private TempAutoOption tempAutoOption;
