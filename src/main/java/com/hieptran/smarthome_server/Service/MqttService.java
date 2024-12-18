@@ -219,7 +219,9 @@ public class MqttService {
 
 
     public String formatDeviceControlTopic(String homePodId) {
-        return String.format("homePod/%s/deviceControl", homePodId);
+        return String.format("homePod/%s/controlDevice", homePodId);
     }
+
+//    homePod/sensorData/controlDevice homePod/sensorData {"temp": 22, "humi": 60, "light": 91}
 
 }
