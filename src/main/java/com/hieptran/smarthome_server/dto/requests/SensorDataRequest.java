@@ -9,6 +9,8 @@ import lombok.*;
 @Builder
 public class SensorDataRequest {
 
+    private String homePodId;
+
     private float temp;
 
     private float humi;

@@ -41,6 +41,9 @@ public class Home {
     @Field("ownerId")
     private User ownerId;
 
+    @Field("homePodId")
+    private String homePodId;
+
     @Field("homeOption")
     private HomeOption homeOption;
 }

@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -28,6 +29,8 @@ import java.util.stream.Collectors;
 public class HomeService {
     private final HomeRepository homeRepository;
     private final UserRepository userRepository;
+    private final UserService userService;
+    private final MqttService mqttService;
     private final HomeOptionRepository homeOptionRepository;
     private final ObjectMapper objectMapper;
     private final CacheConfig cache;
@@ -36,17 +39,20 @@ public class HomeService {
 
     public ResponseEntity<ApiResponse<HomeResponse>> createHome(HomeRequest homeRequest) {
         try {
-            Optional<User> user = userRepository.findById(homeRequest.getOwnerId());
+            User user = userService.getUserFromContext();
 
-            if (user.isEmpty()) {
+            if (user == null) {
                 return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.HOME0200);
             }
 
             Home newHome = Home.builder()
                     .description(homeRequest.getDescription())
-                    .ownerId(user.get())
+                    .ownerId(user)
                     .title(homeRequest.getTitle())
+                    .homePodId(homeRequest.getHomePodId())
                     .build();
+
+            mqttService.subcribe(homeRequest.getHomePodId());
 
             homeRepository.save(newHome);
 
@@ -58,7 +64,7 @@ public class HomeService {
         }
     }
 
-    public ResponseEntity<ApiResponse<Home>> getHome(String id) {
+    public ResponseEntity<ApiResponse<Home>> updateHome(HomeRequest homeRequest, String id) {
         try {
             Optional<Home> home = homeRepository.findById(id);
 
@@ -66,16 +72,96 @@ public class HomeService {
                 return ResponseBuilder.badRequestResponse("Home not found", StatusCodeEnum.HOME0200);
             }
 
-            HomeResponse homeResponse = HomeResponse.from(home.get());
+            home.get().setDescription(homeRequest.getDescription());
+            home.get().setTitle(homeRequest.getTitle());
 
-            return ResponseBuilder.successResponse("Home found", home.get(), StatusCodeEnum.HOME1200);
+            if (home.get().getHomePodId() != null && !home.get().getHomePodId().equals(homeRequest.getHomePodId())) {
+                mqttService.unSubcribe(home.get().getHomePodId());
+            }
+            mqttService.subcribe(homeRequest.getHomePodId());
+            home.get().setHomePodId(homeRequest.getHomePodId());
+
+            homeRepository.save(home.get());
+
+            return ResponseBuilder.successResponse("Home updated", home.get(), StatusCodeEnum.HOME1200);
         } catch (Exception e) {
             return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.HOME0200);
         }
     }
 
+    public ResponseEntity<ApiResponse<List<HomeResponse>>> getHomesFromUserId() {
+        try {
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.HOME0200);
+            }
+
+            List<HomeResponse> homeResponses = homeRepository.findAllByOwnerId(user).stream()
+                    .map(HomeResponse::from)
+                    .toList();
+
+            return ResponseBuilder.successResponse("Homes found", homeResponses, StatusCodeEnum.HOME1200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.HOME0200);
+        }
+    }
+
+    public ResponseEntity<ApiResponse<HomeResponse>> getHome(String id) {
+        try {
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.HOME0200);
+            }
+
+            Home home = homeRepository.findById(id).orElse(null);
+
+            if (home == null) {
+                return ResponseBuilder.badRequestResponse("Home not found", StatusCodeEnum.HOME0200);
+            }
+
+            HomeResponse homeResponse = HomeResponse.from(home);
+
+            return ResponseBuilder.successResponse("Home found", homeResponse, StatusCodeEnum.HOME1200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.HOME0200);
+        }
+    }
+
+    public ResponseEntity<ApiResponse<Objects>> deleteHome(String id) {
+        try {
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.HOME0200);
+            }
+
+            Optional<Home> home = homeRepository.findById(id);
+
+            if (home.isEmpty()) {
+                return ResponseBuilder.badRequestResponse("Home not found", StatusCodeEnum.HOME0200);
+            }
+
+            mqttService.unSubcribe(home.get().getHomePodId());
+
+            homeRepository.delete(home.get());
+
+            return ResponseBuilder.successResponse("Home deleted", StatusCodeEnum.HOME1200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.HOME0200);
+        }
+    }
+
+
     public ResponseEntity<ApiResponse<HomeOption>> getHomeOption(String homeId) {
         try {
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.HOME0200);
+            }
+
             Optional<Home> home = homeRepository.findById(homeId);
 
             if (home.isEmpty()) {
@@ -106,7 +192,7 @@ public class HomeService {
                 return ResponseBuilder.badRequestResponse("Home not found", StatusCodeEnum.HOME0200);
             }
 
-            HomeOption homeOption = processAndCacheHomeOption(settingRequest);
+            HomeOption homeOption = processAndCacheHomeOption(settingRequest, home.getHomePodId());
 
             home.setHomeOption(homeOption);
 
@@ -118,30 +204,24 @@ public class HomeService {
         }
     }
 
-    private HomeOption processAndCacheHomeOption(SettingRequest settingRequest) {
-        TempAutoOption tempAutoOption = processAndCacheOption(
-                settingRequest.getTemperature(),
-                TempAutoOption.class,
-                SettingKey.HIGHTEMP.toString(), SettingKey.LOWTEMP.toString(), SettingKey.HIGHTEMPDEVICES.toString(), SettingKey.LOWTEMPDEVICES.toString()
-        );
+    private HomeOption processAndCacheHomeOption(SettingRequest settingRequest, String homePodId) {
 
-        HumiAutoOption humiAutoOption = processAndCacheOption(
-                settingRequest.getHumidity(),
-                HumiAutoOption.class,
-                SettingKey.HIGHHUMI.toString(), SettingKey.LOWHUMI.toString(), SettingKey.HIGHHUMIDEVICES.toString(), SettingKey.LOWHUMIDEVICES.toString()
-        );
+        TempAutoOption tempAutoOption = objectMapper.convertValue(settingRequest.getTemperature(), TempAutoOption.class);
 
-        LightAutoOption lightAutoOption = processAndCacheOption(
-                settingRequest.getLight(),
-                LightAutoOption.class,
-                SettingKey.HIGHLIGHT.toString(), SettingKey.LOWLIGHT.toString(), SettingKey.HIGHLIGHTDEVICES.toString(), SettingKey.LOWLIGHTDEVICES.toString()
-        );
+        HumiAutoOption humiAutoOption = objectMapper.convertValue(settingRequest.getHumidity(), HumiAutoOption.class);
 
-        return HomeOption.builder()
+        LightAutoOption lightAutoOption = objectMapper.convertValue(settingRequest.getLight(), LightAutoOption.class);
+
+        HomeOption homeOption = HomeOption.builder()
+                .controlType(settingRequest.getControlType())
                 .tempAutoOption(tempAutoOption)
                 .humiAutoOption(humiAutoOption)
                 .lightAutoOption(lightAutoOption)
                 .build();
+
+        cache.put(homePodId, homeOption);
+
+        return homeOption;
     }
 
     private <T, R extends AutoOption> R processAndCacheOption(T request, Class<R> optionClass, String highKey, String lowKey, String highDevicesKey, String lowDevicesKey) {
@@ -163,24 +243,11 @@ public class HomeService {
 
     @PostConstruct
     private void initCache() {
-        Optional<Home> home = homeRepository.findById(homeId);
-        if (home.isPresent()) {
-            HomeOption homeOption = home.get().getHomeOption();
+        List<Home> homes = homeRepository.findAll();
+        for (Home home : homes) {
+            HomeOption homeOption = home.getHomeOption();
             if (homeOption != null) {
-                cache.put(SettingKey.HIGHTEMP.toString(), homeOption.getTempAutoOption().getGreaterThan());
-                cache.put(SettingKey.LOWTEMP.toString(), homeOption.getTempAutoOption().getLessThan());
-                cache.put(SettingKey.HIGHTEMPDEVICES.toString(), homeOption.getTempAutoOption().getHighDevices());
-                cache.put(SettingKey.LOWTEMPDEVICES.toString(), homeOption.getTempAutoOption().getLowDevices());
-
-                cache.put(SettingKey.HIGHHUMI.toString(), homeOption.getHumiAutoOption().getGreaterThan());
-                cache.put(SettingKey.LOWHUMI.toString(), homeOption.getHumiAutoOption().getLessThan());
-                cache.put(SettingKey.HIGHHUMIDEVICES.toString(), homeOption.getHumiAutoOption().getHighDevices());
-                cache.put(SettingKey.LOWHUMIDEVICES.toString(), homeOption.getHumiAutoOption().getLowDevices());
-
-                cache.put(SettingKey.HIGHLIGHT.toString(), homeOption.getLightAutoOption().getGreaterThan());
-                cache.put(SettingKey.LOWLIGHT.toString(), homeOption.getLightAutoOption().getLessThan());
-                cache.put(SettingKey.HIGHLIGHTDEVICES.toString(), homeOption.getLightAutoOption().getHighDevices());
-                cache.put(SettingKey.LOWLIGHTDEVICES.toString(), homeOption.getLightAutoOption().getLowDevices());
+                cache.put(home.getHomePodId(), homeOption);
             }
         }
     }

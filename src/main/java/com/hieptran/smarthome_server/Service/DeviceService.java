@@ -10,9 +10,11 @@ import com.hieptran.smarthome_server.dto.requests.TempAutoRequest;
 import com.hieptran.smarthome_server.dto.responses.DeviceResponse;
 import com.hieptran.smarthome_server.model.Device;
 import com.hieptran.smarthome_server.model.Home;
+import com.hieptran.smarthome_server.model.User;
 import com.hieptran.smarthome_server.repository.DeviceRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -29,9 +31,15 @@ public class DeviceService {
 
     private final MqttService mqttService;
 
-    public ResponseEntity<ApiResponse<DeviceResponse>> createDevice(DeviceRequest deviceRequest) {
+    private final UserService userService;
+
+    @Value("${mqtt.topic.homepod}")
+    private String topic;
+
+    public ResponseEntity<ApiResponse<DeviceResponse>> createDevice(DeviceRequest deviceRequest, String homeId) {
         Device device = Device.builder()
                 .name(deviceRequest.getName())
+                .homeId(homeId)
                 .description(deviceRequest.getDescription())
                 .status(0)
                 .icon(deviceRequest.getIcon())
@@ -48,9 +56,15 @@ public class DeviceService {
         return ResponseBuilder.successResponse("Device created", deviceResponse, StatusCodeEnum.DEVICE0200);
     }
 
-    public ResponseEntity<ApiResponse<List<DeviceResponse>>> getDevices() {
+    public ResponseEntity<ApiResponse<List<DeviceResponse>>> getAllDevicesWithHomeId(String homeId) {
         try {
-            List<DeviceResponse> deviceResponses = deviceRepository.findAll().stream()
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.DEVICE0200);
+            }
+
+            List<DeviceResponse> deviceResponses = deviceRepository.findAllByHomeId(homeId).stream()
                     .map(DeviceResponse::fromDevice)
                     .toList();
             if (deviceResponses.isEmpty()) {
@@ -78,7 +92,7 @@ public class DeviceService {
 
             deviceRepository.save(device);
 
-            mqttService.publish(getNameAndStatus());
+            mqttService.publish(topic, getNameAndStatus());
 
             DeviceResponse response = DeviceResponse.fromDevice(device);
             return ResponseBuilder.successResponse("Device triggered", response, StatusCodeEnum.DEVICE0300);
@@ -90,6 +104,12 @@ public class DeviceService {
 
     public ResponseEntity<ApiResponse<Objects>> deleteDevice(String deviceId) {
         try {
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.DEVICE0200);
+            }
+
             Optional<Device> optionalDevice = deviceRepository.findById(deviceId);
             if (optionalDevice.isEmpty()) {
                 return ResponseBuilder.badRequestResponse("Failed to find device", StatusCodeEnum.EXCEPTION);
