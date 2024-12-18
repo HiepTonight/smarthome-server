@@ -28,8 +28,8 @@ public class DeviceController {
     }
 
     @PostMapping("/{id}/trigger")
-    public ResponseEntity<ApiResponse<DeviceResponse>> triggerDevice(@PathVariable("id") String id) {
-        return deviceService.triggerDevice(id);
+    public ResponseEntity<ApiResponse<DeviceResponse>> triggerDevice(@PathVariable("id") String id, @RequestParam("homePodId") String homePodId) {
+        return deviceService.triggerDevice(id, homePodId);
     }
 
     @DeleteMapping("/{id}")

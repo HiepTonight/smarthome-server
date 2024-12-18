@@ -79,8 +79,14 @@ public class DeviceService {
         }
     }
 
-    public ResponseEntity<ApiResponse<DeviceResponse>> triggerDevice(String deviceId) {
+    public ResponseEntity<ApiResponse<DeviceResponse>> triggerDevice(String deviceId, String homePodId) {
         try {
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.DEVICE0300);
+            }
+
             Optional<Device> optionalDevice = deviceRepository.findById(deviceId);
             if (optionalDevice.isEmpty()) {
                 return ResponseBuilder.badRequestResponse("Device not found", StatusCodeEnum.DEVICE0300);
@@ -92,7 +98,7 @@ public class DeviceService {
 
             deviceRepository.save(device);
 
-            mqttService.publish(topic, getNameAndStatus());
+            mqttService.publish(homePodId, getNameAndStatus(device.getHomeId()));
 
             DeviceResponse response = DeviceResponse.fromDevice(device);
             return ResponseBuilder.successResponse("Device triggered", response, StatusCodeEnum.DEVICE0300);
@@ -139,11 +145,11 @@ public class DeviceService {
 
     }
 
-    private String getNameAndStatus() {
+    private String getNameAndStatus(String homeId) {
         ObjectMapper objectMapper = new ObjectMapper();
 
         try {
-            List<Device> devices = deviceRepository.findAll();
+            List<Device> devices = deviceRepository.findAllByHomeId(homeId);
             if (devices.isEmpty()) {
                 throw new RuntimeException();
             }
