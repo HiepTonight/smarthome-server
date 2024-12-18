@@ -43,10 +43,35 @@ public class MqttService {
     private String deviceControlTopic;
 
     @PostConstruct
+    public void subscribeAllHomePods() throws Exception {
+        List<Home> homePodIds = homeRepository.findAll();
+        for (String homePodId : homePodIds.stream().map(Home::getHomePodId).toList()) {
+            String topic = String.format("homePod/%s", homePodId);
+            client.subscribeWith()
+                    .topicFilter(topic)
+                    .callback(publish -> {
+                        try {
+                            handleMessage(publish);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    })
+                    .send()
+                    .whenComplete((subAck, throwable) -> {
+                        if (throwable != null) {
+                            System.err.println("Failed to subscribe to topic: " + topic);
+                        } else {
+                            System.out.println("Successfully subscribed to topic: " + topic);
+                        }
+                    });
+        }
+    }
+
+    @PostConstruct
     public void MqttService1() {
 
         client.subscribeWith()
-                .topicFilter("homePod/2")
+                .topicFilter("sensorData")
                 .callback(publish -> {
                     try {
                         handleMessage(publish);
@@ -111,6 +136,7 @@ public class MqttService {
         String[] segments = topic.split("homePod/");
         return segments[1]; //  format "homePod/{homePodId}"
     }
+
 
     private void processMessage(String homePodId, byte[] payload) throws Exception {
 
@@ -189,6 +215,8 @@ public class MqttService {
                     }
                 });
     }
+
+
 
     public String formatDeviceControlTopic(String homePodId) {
         return String.format("homePod/%s/deviceControl", homePodId);

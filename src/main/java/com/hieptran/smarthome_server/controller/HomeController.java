@@ -9,27 +9,44 @@ import com.hieptran.smarthome_server.model.Home;
 import com.hieptran.smarthome_server.model.HomeOption;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Objects;
+
 @RestController
-@RequestMapping("/homes")
+@RequestMapping("/home")
 @RequiredArgsConstructor
 public class HomeController {
     private final HomeService homeService;
 
+    @PreAuthorize("isAuthenticated()")
     @PostMapping()
     public ResponseEntity<ApiResponse<HomeResponse>> createHome(@RequestBody HomeRequest homeRequest) {
         return homeService.createHome(homeRequest);
     }
 
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<HomeResponse>>> getHomes() {
+        return homeService.getHomesFromUserId();
+    }
+
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
-    private ResponseEntity<ApiResponse<Home>> getHome(@PathVariable("id") String id) {
+    public ResponseEntity<ApiResponse<HomeResponse>> getHome(@PathVariable("id") String id) {
         return homeService.getHome(id);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<Home>> updateHome(@RequestBody HomeRequest homeRequest, @PathVariable("id") String id) {
         return homeService.updateHome(homeRequest, id);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Objects>> deleteHome(@PathVariable("id") String id) {
+        return homeService.deleteHome(id);
     }
 
     @GetMapping("/setting/{id}")

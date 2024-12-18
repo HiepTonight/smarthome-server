@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 public class HomeService {
     private final HomeRepository homeRepository;
     private final UserRepository userRepository;
+    private final UserService userService;
     private final MqttService mqttService;
     private final HomeOptionRepository homeOptionRepository;
     private final ObjectMapper objectMapper;
@@ -37,15 +39,15 @@ public class HomeService {
 
     public ResponseEntity<ApiResponse<HomeResponse>> createHome(HomeRequest homeRequest) {
         try {
-            Optional<User> user = userRepository.findById(homeRequest.getOwnerId());
+            User user = userService.getUserFromContext();
 
-            if (user.isEmpty()) {
+            if (user == null) {
                 return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.HOME0200);
             }
 
             Home newHome = Home.builder()
                     .description(homeRequest.getDescription())
-                    .ownerId(user.get())
+                    .ownerId(user)
                     .title(homeRequest.getTitle())
                     .homePodId(homeRequest.getHomePodId())
                     .build();
@@ -87,24 +89,79 @@ public class HomeService {
         }
     }
 
-    public ResponseEntity<ApiResponse<Home>> getHome(String id) {
+    public ResponseEntity<ApiResponse<List<HomeResponse>>> getHomesFromUserId() {
         try {
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.HOME0200);
+            }
+
+            List<HomeResponse> homeResponses = homeRepository.findAllByOwnerId(user).stream()
+                    .map(HomeResponse::from)
+                    .toList();
+
+            return ResponseBuilder.successResponse("Homes found", homeResponses, StatusCodeEnum.HOME1200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.HOME0200);
+        }
+    }
+
+    public ResponseEntity<ApiResponse<HomeResponse>> getHome(String id) {
+        try {
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.HOME0200);
+            }
+
+            Home home = homeRepository.findById(id).orElse(null);
+
+            if (home == null) {
+                return ResponseBuilder.badRequestResponse("Home not found", StatusCodeEnum.HOME0200);
+            }
+
+            HomeResponse homeResponse = HomeResponse.from(home);
+
+            return ResponseBuilder.successResponse("Home found", homeResponse, StatusCodeEnum.HOME1200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.HOME0200);
+        }
+    }
+
+    public ResponseEntity<ApiResponse<Objects>> deleteHome(String id) {
+        try {
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.HOME0200);
+            }
+
             Optional<Home> home = homeRepository.findById(id);
 
             if (home.isEmpty()) {
                 return ResponseBuilder.badRequestResponse("Home not found", StatusCodeEnum.HOME0200);
             }
 
-            HomeResponse homeResponse = HomeResponse.from(home.get());
+            mqttService.unSubcribe(home.get().getHomePodId());
 
-            return ResponseBuilder.successResponse("Home found", home.get(), StatusCodeEnum.HOME1200);
+            homeRepository.delete(home.get());
+
+            return ResponseBuilder.successResponse("Home deleted", StatusCodeEnum.HOME1200);
         } catch (Exception e) {
             return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.HOME0200);
         }
     }
 
+
     public ResponseEntity<ApiResponse<HomeOption>> getHomeOption(String homeId) {
         try {
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.HOME0200);
+            }
+
             Optional<Home> home = homeRepository.findById(homeId);
 
             if (home.isEmpty()) {

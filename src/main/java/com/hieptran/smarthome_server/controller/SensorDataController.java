@@ -15,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/sensor")
+@RequestMapping("/home/sensor")
 public class SensorDataController {
     private final SensorDataService sensorDataService;
 

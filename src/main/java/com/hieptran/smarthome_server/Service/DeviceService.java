@@ -10,6 +10,7 @@ import com.hieptran.smarthome_server.dto.requests.TempAutoRequest;
 import com.hieptran.smarthome_server.dto.responses.DeviceResponse;
 import com.hieptran.smarthome_server.model.Device;
 import com.hieptran.smarthome_server.model.Home;
+import com.hieptran.smarthome_server.model.User;
 import com.hieptran.smarthome_server.repository.DeviceRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,8 @@ public class DeviceService {
     private final DeviceRepository deviceRepository;
 
     private final MqttService mqttService;
+
+    private final UserService userService;
 
     @Value("${mqtt.topic.homepod}")
     private String topic;
@@ -55,6 +58,12 @@ public class DeviceService {
 
     public ResponseEntity<ApiResponse<List<DeviceResponse>>> getAllDevicesWithHomeId(String homeId) {
         try {
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.DEVICE0200);
+            }
+
             List<DeviceResponse> deviceResponses = deviceRepository.findAllByHomeId(homeId).stream()
                     .map(DeviceResponse::fromDevice)
                     .toList();
@@ -95,6 +104,12 @@ public class DeviceService {
 
     public ResponseEntity<ApiResponse<Objects>> deleteDevice(String deviceId) {
         try {
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.DEVICE0200);
+            }
+
             Optional<Device> optionalDevice = deviceRepository.findById(deviceId);
             if (optionalDevice.isEmpty()) {
                 return ResponseBuilder.badRequestResponse("Failed to find device", StatusCodeEnum.EXCEPTION);

@@ -12,13 +12,13 @@ import java.util.List;
 import java.util.Objects;
 
 @RestController
-@RequestMapping("/devices")
+@RequestMapping("/home/device")
 @RequiredArgsConstructor
 public class DeviceController {
     private final DeviceService deviceService;
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<List<DeviceResponse>>> getDevices(@PathVariable("id") String homeId) {
+    @GetMapping("")
+    public ResponseEntity<ApiResponse<List<DeviceResponse>>> getDevices(@RequestParam("id")String homeId) {
         return deviceService.getAllDevicesWithHomeId(homeId);
     }
 
