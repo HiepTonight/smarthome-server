@@ -5,11 +5,13 @@ import com.hieptran.smarthome_server.dto.ApiResponse;
 import com.hieptran.smarthome_server.dto.StatusCodeEnum;
 import com.hieptran.smarthome_server.dto.builder.ResponseBuilder;
 import com.hieptran.smarthome_server.dto.requests.AuthenticationRequest;
+import com.hieptran.smarthome_server.dto.requests.IntrospectRequest;
 import com.hieptran.smarthome_server.dto.requests.UserRequest;
 import com.hieptran.smarthome_server.dto.responses.UserLoginResponse;
 import com.hieptran.smarthome_server.dto.responses.UserResponse;
 import com.hieptran.smarthome_server.model.User;
 import com.hieptran.smarthome_server.repository.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -134,6 +137,22 @@ public class UserService {
             UserResponse userResponse = UserResponse.from(user);
 
             return ResponseBuilder.successResponse("Get user info success", userResponse, StatusCodeEnum.USER1200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
+        }
+    }
+
+    public ResponseEntity<ApiResponse<Boolean>> introspectToken(HttpServletRequest request) {
+        try {
+            User user = getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.USER0200);
+            }
+
+            String token = jwtService.getJwtFromRequest(request);
+
+            return ResponseBuilder.successResponse("Token is valid", jwtService.validateToken(token), StatusCodeEnum.USER1200);
         } catch (Exception e) {
             return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
         }
