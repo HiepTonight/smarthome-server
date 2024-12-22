@@ -29,8 +29,8 @@ public class Device {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    @Field("homeId")
-    private String homeId;
+    @Field("homePodId")
+    private String homePodId;
 
     @Field("name")
     private String name;

@@ -5,10 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hieptran.smarthome_server.config.CacheConfig;
 import com.hieptran.smarthome_server.dto.requests.SensorDataRequest;
-import com.hieptran.smarthome_server.model.DeviceAuto;
-import com.hieptran.smarthome_server.model.Home;
-import com.hieptran.smarthome_server.model.HomeOption;
-import com.hieptran.smarthome_server.model.TempAutoOption;
+import com.hieptran.smarthome_server.model.*;
+import com.hieptran.smarthome_server.repository.DeviceRepository;
 import com.hieptran.smarthome_server.repository.HomeRepository;
 import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient;
 import com.hivemq.client.mqtt.mqtt5.message.publish.Mqtt5Publish;
@@ -27,7 +25,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class MqttService {
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     private final Mqtt5AsyncClient client;
 
@@ -36,6 +34,7 @@ public class MqttService {
     private final HomeRepository homeRepository;
 
     private final CacheConfig cache;
+    private final DeviceRepository deviceRepository;
 
     @Value("${mqtt.topic.homepod}")
     private String homePodTopic;
@@ -114,23 +113,32 @@ public class MqttService {
 
     private void processFaceData(String homePodId, byte[] payload) throws IOException {
         String payloadString = new String(payload, StandardCharsets.UTF_8);
-        ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode = objectMapper.readTree(payloadString);
 
         if (jsonNode.has("face")) {
             int faceValue = jsonNode.get("face").asInt();
+
+            if (faceValue != 1) {
+                return;
+            }
+
             String message = String.format("{\"door\": %d}", faceValue);
+
+            Device door = deviceRepository.findByHomePodIdAndName(homePodId, "Door");
+
+            if (door == null) {
+                System.out.println("Door not found");
+                return;
+            }
+
+            door.setStatus(faceValue);
+            deviceRepository.save(door);
+
             publish(homePodId, message);
-            processDoor(faceValue, homePodId);
+
             System.out.println((faceValue == 1 ? "Opening" : "Closing") + " door for homePodId: " + homePodId);
         }
     }
-
-    private void processDoor(int status, String homePodId) {
-        String message = String.format("{\"door\": %d}", status);
-        publishFaceRecognize(homePodId, message);
-    }
-
 
     private void processMessage(String homePodId, byte[] payload) throws Exception {
 
