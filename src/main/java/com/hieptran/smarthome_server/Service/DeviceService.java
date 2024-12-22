@@ -98,6 +98,10 @@ public class DeviceService {
 
             deviceRepository.save(device);
 
+            if (device.getName().equals("Door")) {
+                processDoor(device.getStatus(), homePodId);
+            }
+
             mqttService.publish(homePodId, getNameAndStatus(device.getHomeId()));
 
             DeviceResponse response = DeviceResponse.fromDevice(device);
@@ -141,8 +145,9 @@ public class DeviceService {
 //        }
 //    }
 
-    private <T> void processSetting(T setting ) {
-
+    private void processDoor(int status, String homePodId) {
+        String message = String.format("{\"door\": %d}", status);
+        mqttService.publishFaceRecognize(homePodId, message);
     }
 
     private String getNameAndStatus(String homeId) {
