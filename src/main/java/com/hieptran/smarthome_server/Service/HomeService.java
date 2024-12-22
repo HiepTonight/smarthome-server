@@ -53,6 +53,7 @@ public class HomeService {
                     .build();
 
             mqttService.subcribe(homeRequest.getHomePodId());
+            mqttService.subcribeFaceTopic(homeRequest.getHomePodId());
 
             homeRepository.save(newHome);
 
@@ -79,6 +80,8 @@ public class HomeService {
                 mqttService.unSubcribe(home.get().getHomePodId());
             }
             mqttService.subcribe(homeRequest.getHomePodId());
+            mqttService.subcribeFaceTopic(homeRequest.getHomePodId());
+
             home.get().setHomePodId(homeRequest.getHomePodId());
 
             homeRepository.save(home.get());

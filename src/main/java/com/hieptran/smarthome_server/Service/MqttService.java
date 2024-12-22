@@ -46,53 +46,24 @@ public class MqttService {
     public void subscribeAllHomePods() throws Exception {
         List<Home> homePodIds = homeRepository.findAll();
         for (String homePodId : homePodIds.stream().map(Home::getHomePodId).toList()) {
-            String topic = String.format("homePod/%s", homePodId);
-            client.subscribeWith()
-                    .topicFilter(topic)
-                    .callback(publish -> {
-                        try {
-                            handleMessage(publish);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    })
-                    .send()
-                    .whenComplete((subAck, throwable) -> {
-                        if (throwable != null) {
-                            System.err.println("Failed to subscribe to topic: " + topic);
-                        } else {
-                            System.out.println("Successfully subscribed to topic: " + topic);
-                        }
-                    });
+            subcribe(homePodId);
+            subcribeFaceTopic(homePodId);
         }
     }
 
-    @PostConstruct
-    public void MqttService1() {
-
-        client.subscribeWith()
-                .topicFilter("sensorData")
-                .callback(publish -> {
-                    try {
-                        handleMessage(publish);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                })
-                .send()
-                .whenComplete((subAck, throwable) -> {
-                    if (throwable != null) {
-
-                    } else {
-                        System.out.println("Subcribe thành công topic");
-                        // Handle successful subscription,   e.g. logging or incrementing a metric
-                    }
-                });
+    public void subcribe(String homePodId) {
+        String formattedTopic = String.format("homePod/%s", homePodId);
+        processSubcribe(formattedTopic);
     }
 
-    public void subcribe(String topic) {
+    public void subcribeFaceTopic(String homePodId) {
+        String formattedFaceTopic = String.format("homePod/%s/faceRecognize", homePodId);
+        processSubcribe(formattedFaceTopic);
+    }
+
+    private void processSubcribe(String formattedFaceTopic) {
         client.subscribeWith()
-                .topicFilter(topic)
+                .topicFilter(formattedFaceTopic)
                 .callback(publish -> {
                     try {
                         handleMessage(publish);
@@ -103,10 +74,9 @@ public class MqttService {
                 .send()
                 .whenComplete((subAck, throwable) -> {
                     if (throwable != null) {
-
+                        System.err.println("Failed to subscribe to topic: " + formattedFaceTopic);
                     } else {
-                        System.out.println("Subcribe thành công topic");
-                        // Handle successful subscription,   e.g. logging or incrementing a metric
+                        System.out.println("Successfully subscribed to topic: " + formattedFaceTopic);
                     }
                 });
     }
@@ -128,13 +98,13 @@ public class MqttService {
     private void handleMessage(Mqtt5Publish publish) throws Exception {
         String topic = publish.getTopic().toString();
         byte[] payload = publish.getPayloadAsBytes();
-        String homePodId = extractHomePodIdFromTopic(topic);
+        String homePodId = extractHomePodIdFromTopic(topic, 1);
         processMessage(homePodId, payload);
     }
 
-    private String extractHomePodIdFromTopic(String topic) {
+    private String extractHomePodIdFromTopic(String topic, int segment) {
         String[] segments = topic.split("homePod/");
-        return segments[1]; //  format "homePod/{homePodId}"
+        return segments[segment]; //  format "homePod/{homePodId}" or homePod/{homePodId}/face"
     }
 
 
@@ -216,10 +186,30 @@ public class MqttService {
                 });
     }
 
+    //  format "homePod/{homePodId}/deviceControl"
+    public void publishFaceRecognize(String topic, String message) {
+        String formattedTopic = formatFaceControlTopic(topic);
+        client.publishWith()
+                .topic(formattedTopic)
+                .payload(message.getBytes(StandardCharsets.UTF_8))
+                .send()
+                .whenComplete((mqtt5Publish, throwable) -> {
+                    if (throwable != null) {
+                        // Handle failure to publish
+                        System.err.println("Lỗi khi publish: " + throwable.getMessage());
+                    } else {
+                        // Handle successful publish, e.g. logging or incrementing a metric
+                        System.out.println("Publish thành công: " + mqtt5Publish);
+                    }
+                });
+    }
 
-
-    public String formatDeviceControlTopic(String homePodId) {
+    private String formatDeviceControlTopic(String homePodId) {
         return String.format("homePod/%s/controlDevice", homePodId);
+    }
+
+    private String formatFaceControlTopic(String homePodId) {
+        return String.format("homePod/%s/doorStatus", homePodId);
     }
 
 //    homePod/sensorData/controlDevice homePod/sensorData {"temp": 22, "humi": 60, "light": 91}
