@@ -1,6 +1,7 @@
 package com.hieptran.smarthome_server.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hieptran.smarthome_server.config.CacheConfig;
 import com.hieptran.smarthome_server.dto.requests.SensorDataRequest;
@@ -99,12 +100,35 @@ public class MqttService {
         String topic = publish.getTopic().toString();
         byte[] payload = publish.getPayloadAsBytes();
         String homePodId = extractHomePodIdFromTopic(topic, 1);
-        processMessage(homePodId, payload);
+        if (topic.endsWith("/faceRecognize")) {
+            processFaceData(homePodId, payload);
+        } else {
+            processMessage(homePodId, payload);
+        }
     }
 
     private String extractHomePodIdFromTopic(String topic, int segment) {
-        String[] segments = topic.split("homePod/");
+        String[] segments = topic.split("/");
         return segments[segment]; //  format "homePod/{homePodId}" or homePod/{homePodId}/face"
+    }
+
+    private void processFaceData(String homePodId, byte[] payload) throws IOException {
+        String payloadString = new String(payload, StandardCharsets.UTF_8);
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = objectMapper.readTree(payloadString);
+
+        if (jsonNode.has("face")) {
+            int faceValue = jsonNode.get("face").asInt();
+            String message = String.format("{\"door\": %d}", faceValue);
+            publish(homePodId, message);
+            processDoor(faceValue, homePodId);
+            System.out.println((faceValue == 1 ? "Opening" : "Closing") + " door for homePodId: " + homePodId);
+        }
+    }
+
+    private void processDoor(int status, String homePodId) {
+        String message = String.format("{\"door\": %d}", status);
+        publishFaceRecognize(homePodId, message);
     }
 
 

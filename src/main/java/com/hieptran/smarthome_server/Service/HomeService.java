@@ -146,7 +146,11 @@ public class HomeService {
                 return ResponseBuilder.badRequestResponse("Home not found", StatusCodeEnum.HOME0200);
             }
 
-            mqttService.unSubcribe(home.get().getHomePodId());
+            try {
+                mqttService.unSubcribe(home.get().getHomePodId());
+            } catch (Exception e) {
+                System.out.println("Failed to unsubscribe home pod: " + e.getMessage());
+            }
 
             homeRepository.delete(home.get());
 

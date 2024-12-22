@@ -146,7 +146,7 @@ public class DeviceService {
 //    }
 
     private void processDoor(int status, String homePodId) {
-        String message = String.format("door: %d", status);
+        String message = String.format("{\"door\": %d}", status);
         mqttService.publishFaceRecognize(homePodId, message);
     }
 
