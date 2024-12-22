@@ -36,10 +36,20 @@ public class DeviceService {
     @Value("${mqtt.topic.homepod}")
     private String topic;
 
-    public ResponseEntity<ApiResponse<DeviceResponse>> createDevice(DeviceRequest deviceRequest, String homeId) {
+    public ResponseEntity<ApiResponse<DeviceResponse>> createDevice(DeviceRequest deviceRequest, String homePodId) {
+        User user = userService.getUserFromContext();
+
+        if (user == null) {
+            return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.DEVICE0200);
+        }
+
+        if (homePodId == null) {
+            return ResponseBuilder.badRequestResponse("HomePod not found", StatusCodeEnum.DEVICE0200);
+        }
+
         Device device = Device.builder()
                 .name(deviceRequest.getName())
-                .homeId(homeId)
+                .homePodId(homePodId)
                 .description(deviceRequest.getDescription())
                 .status(0)
                 .icon(deviceRequest.getIcon())
@@ -56,7 +66,7 @@ public class DeviceService {
         return ResponseBuilder.successResponse("Device created", deviceResponse, StatusCodeEnum.DEVICE0200);
     }
 
-    public ResponseEntity<ApiResponse<List<DeviceResponse>>> getAllDevicesWithHomeId(String homeId) {
+    public ResponseEntity<ApiResponse<List<DeviceResponse>>> getAllDevicesWithHomePodId(String homePodId) {
         try {
             User user = userService.getUserFromContext();
 
@@ -64,7 +74,7 @@ public class DeviceService {
                 return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.DEVICE0200);
             }
 
-            List<DeviceResponse> deviceResponses = deviceRepository.findAllByHomeId(homeId).stream()
+            List<DeviceResponse> deviceResponses = deviceRepository.findAllByHomePodId(homePodId).stream()
                     .map(DeviceResponse::fromDevice)
                     .toList();
             if (deviceResponses.isEmpty()) {
@@ -102,7 +112,7 @@ public class DeviceService {
                 processDoor(device.getStatus(), homePodId);
             }
 
-            mqttService.publish(homePodId, getNameAndStatus(device.getHomeId()));
+            mqttService.publish(homePodId, getNameAndStatus(device.getHomePodId()));
 
             DeviceResponse response = DeviceResponse.fromDevice(device);
             return ResponseBuilder.successResponse("Device triggered", response, StatusCodeEnum.DEVICE0300);
@@ -150,11 +160,11 @@ public class DeviceService {
         mqttService.publishFaceRecognize(homePodId, message);
     }
 
-    private String getNameAndStatus(String homeId) {
+    private String getNameAndStatus(String homePodId) {
         ObjectMapper objectMapper = new ObjectMapper();
 
         try {
-            List<Device> devices = deviceRepository.findAllByHomeId(homeId);
+            List<Device> devices = deviceRepository.findAllByHomePodId(homePodId);
             if (devices.isEmpty()) {
                 throw new RuntimeException();
             }

@@ -18,13 +18,13 @@ public class DeviceController {
     private final DeviceService deviceService;
 
     @GetMapping("")
-    public ResponseEntity<ApiResponse<List<DeviceResponse>>> getDevices(@RequestParam("id")String homeId) {
-        return deviceService.getAllDevicesWithHomeId(homeId);
+    public ResponseEntity<ApiResponse<List<DeviceResponse>>> getDevices(@RequestParam("id")String homePodId) {
+        return deviceService.getAllDevicesWithHomePodId(homePodId);
     }
 
     @PostMapping("/{id}")
-    public ResponseEntity<ApiResponse<DeviceResponse>> createDevice(@PathVariable("id") String homeId, @RequestBody DeviceRequest deviceRequest) {
-        return deviceService.createDevice(deviceRequest, homeId);
+    public ResponseEntity<ApiResponse<DeviceResponse>> createDevice(@PathVariable("id") String homePodId, @RequestBody DeviceRequest deviceRequest) {
+        return deviceService.createDevice(deviceRequest, homePodId);
     }
 
     @PostMapping("/{id}/trigger")
