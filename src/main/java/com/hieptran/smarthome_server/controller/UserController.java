@@ -2,9 +2,7 @@ package com.hieptran.smarthome_server.controller;
 
 import com.hieptran.smarthome_server.Service.UserService;
 import com.hieptran.smarthome_server.dto.ApiResponse;
-import com.hieptran.smarthome_server.dto.requests.AuthenticationRequest;
-import com.hieptran.smarthome_server.dto.requests.IntrospectRequest;
-import com.hieptran.smarthome_server.dto.requests.UserRequest;
+import com.hieptran.smarthome_server.dto.requests.*;
 import com.hieptran.smarthome_server.dto.responses.UserLoginResponse;
 import com.hieptran.smarthome_server.dto.responses.UserResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +27,16 @@ public class UserController {
         return userService.login(authenticationRequest);
     }
 
+    @PostMapping("/update-info")
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(@RequestBody UserInfoUpdateRequest userInfoUpdateRequest) {
+        return userService.updateUser(userInfoUpdateRequest);
+    }
+
+    @PostMapping("/update-password")
+    public ResponseEntity<ApiResponse<UserResponse>> updatePassword(@RequestBody UserPasswordUpdateRequest userPasswordUpdateRequest) {
+        return userService.updateUserPassword(userPasswordUpdateRequest);
+    }
+
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> getUserInfo() {
@@ -38,6 +46,11 @@ public class UserController {
     @PostMapping("/introspect")
     public ResponseEntity<ApiResponse<Boolean>> introspect(HttpServletRequest request) {
         return userService.introspectToken(request);
+    }
+
+    @PostMapping("/update-homeDefault")
+    private ResponseEntity<ApiResponse<UserResponse>> updateHomeDefault(@RequestBody HomeDefaultRequest userHomeDefaultRequest) {
+        return userService.setHomeDefault(userHomeDefaultRequest);
     }
 
 }
