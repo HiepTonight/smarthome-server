@@ -90,7 +90,7 @@ public class UserService {
                 return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.USER0200);
             }
 
-            if (userInfoUpdateRequest.getUsername() != null) {
+            if (userInfoUpdateRequest.getUsername() != null && !userInfoUpdateRequest.getUsername().equals(user.getUsername())) {
                 if (userRepository.existsByUsername(userInfoUpdateRequest.getUsername())) {
                     return ResponseBuilder.badRequestResponse("Username is already taken", StatusCodeEnum.EXCEPTION);
                 }
@@ -98,7 +98,7 @@ public class UserService {
                 user.setUsername(userInfoUpdateRequest.getUsername());
             }
 
-            if (userInfoUpdateRequest.getEmail() != null) {
+            if (userInfoUpdateRequest.getEmail() != null && !userInfoUpdateRequest.getEmail().equals(user.getEmail())) {
                 if (userRepository.existsByEmail(userInfoUpdateRequest.getEmail())) {
                     return ResponseBuilder.badRequestResponse("Email is already taken", StatusCodeEnum.EXCEPTION);
                 }
@@ -106,22 +106,22 @@ public class UserService {
                 user.setEmail(userInfoUpdateRequest.getEmail());
             }
 
-            if (userInfoUpdateRequest.getDisplayName() != null) {
+            if (userInfoUpdateRequest.getDisplayName() != null && !userInfoUpdateRequest.getDisplayName().equals(user.getDisplayName())) {
                 user.setDisplayName(userInfoUpdateRequest.getDisplayName());
             }
 
-            if (userInfoUpdateRequest.getPhone() != null) {
+            if (userInfoUpdateRequest.getPhone() != null && !userInfoUpdateRequest.getPhone().equals(user.getPhone())) {
                 if (userRepository.existsByPhone(userInfoUpdateRequest.getPhone())) {
                     return ResponseBuilder.badRequestResponse("Phone is already taken", StatusCodeEnum.EXCEPTION);
                 }
                 user.setPhone(userInfoUpdateRequest.getPhone());
             }
 
-            if (userInfoUpdateRequest.getAbout() != null) {
+            if (userInfoUpdateRequest.getAbout() != null && !userInfoUpdateRequest.getAbout().equals(user.getAbout())) {
                 user.setAbout(userInfoUpdateRequest.getAbout());
             }
 
-            if (userInfoUpdateRequest.getHomeDefaultId() != null) {
+            if (userInfoUpdateRequest.getHomeDefaultId() != null && !userInfoUpdateRequest.getHomeDefaultId().equals(user.getDefaultHomeId())) {
                 user.setDefaultHomeId(userInfoUpdateRequest.getHomeDefaultId());
             }
 
