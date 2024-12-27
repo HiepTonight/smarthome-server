@@ -38,14 +38,23 @@ public class User {
     @Field("email")
     private String email;
 
+    @Field("phone")
+    private String phone;
+
     @Field("displayName")
     private String displayName;
+
+    @Field("about")
+    private String about;
 
     @Field("role")
     private String role;
 
     @Field("isActivated")
     private boolean isActivated;
+
+    @Field("defaultHomeId")
+    private String defaultHomeId;
 
 //    @Field("verifyToken")
 //    private String verifyToken;

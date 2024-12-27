@@ -4,9 +4,7 @@ import com.hieptran.smarthome_server.config.security.UserDetailsImpl;
 import com.hieptran.smarthome_server.dto.ApiResponse;
 import com.hieptran.smarthome_server.dto.StatusCodeEnum;
 import com.hieptran.smarthome_server.dto.builder.ResponseBuilder;
-import com.hieptran.smarthome_server.dto.requests.AuthenticationRequest;
-import com.hieptran.smarthome_server.dto.requests.IntrospectRequest;
-import com.hieptran.smarthome_server.dto.requests.UserRequest;
+import com.hieptran.smarthome_server.dto.requests.*;
 import com.hieptran.smarthome_server.dto.responses.UserLoginResponse;
 import com.hieptran.smarthome_server.dto.responses.UserResponse;
 import com.hieptran.smarthome_server.model.User;
@@ -84,7 +82,7 @@ public class UserService {
         }
     }
 
-    public ResponseEntity<ApiResponse<UserResponse>> updateUser(UserRequest userRequest) {
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(UserInfoUpdateRequest userInfoUpdateRequest) {
         try {
             User user = getUserFromContext();
 
@@ -92,28 +90,39 @@ public class UserService {
                 return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.USER0200);
             }
 
-            if (userRequest.getUsername() != null) {
-                if (userRepository.existsByUsername(userRequest.getUsername())) {
+            if (userInfoUpdateRequest.getUsername() != null) {
+                if (userRepository.existsByUsername(userInfoUpdateRequest.getUsername())) {
                     return ResponseBuilder.badRequestResponse("Username is already taken", StatusCodeEnum.EXCEPTION);
                 }
 
-                user.setUsername(userRequest.getUsername());
+                user.setUsername(userInfoUpdateRequest.getUsername());
             }
 
-            if (userRequest.getPassword() != null) {
-                user.setPassword(passwordEncoder.encode(userRequest.getPassword()));
-            }
-
-            if (userRequest.getEmail() != null) {
-                if (userRepository.existsByEmail(userRequest.getEmail())) {
+            if (userInfoUpdateRequest.getEmail() != null) {
+                if (userRepository.existsByEmail(userInfoUpdateRequest.getEmail())) {
                     return ResponseBuilder.badRequestResponse("Email is already taken", StatusCodeEnum.EXCEPTION);
                 }
 
-                user.setEmail(userRequest.getEmail());
+                user.setEmail(userInfoUpdateRequest.getEmail());
             }
 
-            if (userRequest.getDisplayName() != null) {
-                user.setDisplayName(userRequest.getDisplayName());
+            if (userInfoUpdateRequest.getDisplayName() != null) {
+                user.setDisplayName(userInfoUpdateRequest.getDisplayName());
+            }
+
+            if (userInfoUpdateRequest.getPhone() != null) {
+                if (userRepository.existsByPhone(userInfoUpdateRequest.getPhone())) {
+                    return ResponseBuilder.badRequestResponse("Phone is already taken", StatusCodeEnum.EXCEPTION);
+                }
+                user.setPhone(userInfoUpdateRequest.getPhone());
+            }
+
+            if (userInfoUpdateRequest.getAbout() != null) {
+                user.setAbout(userInfoUpdateRequest.getAbout());
+            }
+
+            if (userInfoUpdateRequest.getHomeDefaultId() != null) {
+                user.setDefaultHomeId(userInfoUpdateRequest.getHomeDefaultId());
             }
 
             userRepository.save(user);
@@ -121,6 +130,50 @@ public class UserService {
             UserResponse userResponse = UserResponse.from(user);
 
             return ResponseBuilder.successResponse("Update user success", userResponse, StatusCodeEnum.USER1200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
+        }
+    }
+
+    public ResponseEntity<ApiResponse<UserResponse>> updateUserPassword(UserPasswordUpdateRequest userPasswordUpdateRequest) {
+        try {
+            User user = getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.USER0200);
+            }
+
+            if (!passwordEncoder.matches(userPasswordUpdateRequest.getOldPassword(), user.getPassword())) {
+                return ResponseBuilder.badRequestResponse("Old password is incorrect", StatusCodeEnum.USER0200);
+            }
+
+            if (!Objects.equals(userPasswordUpdateRequest.getNewPassword(), userPasswordUpdateRequest.getConfirmPassword())) {
+                return ResponseBuilder.badRequestResponse("New password and confirm password do not match", StatusCodeEnum.USER0200);
+            }
+
+            user.setPassword(passwordEncoder.encode(userPasswordUpdateRequest.getNewPassword()));
+
+            userRepository.save(user);
+
+            UserResponse userResponse = UserResponse.from(user);
+
+            return ResponseBuilder.successResponse("Update user password success", userResponse, StatusCodeEnum.USER1200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
+        }
+    }
+
+    public ResponseEntity<ApiResponse<Objects>> deleteUser() {
+        try {
+            User user = getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.USER0200);
+            }
+
+            userRepository.deleteById(user.getId().toString());
+
+            return ResponseBuilder.successResponse("Delete user success", StatusCodeEnum.USER1200);
         } catch (Exception e) {
             return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
         }
@@ -137,6 +190,28 @@ public class UserService {
             UserResponse userResponse = UserResponse.from(user);
 
             return ResponseBuilder.successResponse("Get user info success", userResponse, StatusCodeEnum.USER1200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
+        }
+    }
+
+    public ResponseEntity<ApiResponse<UserResponse>> setHomeDefault(HomeDefaultRequest homeDefaultRequest) {
+        try {
+            User user = getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.USER0200);
+            }
+
+            if (homeDefaultRequest.getHomeId() != null) {
+                user.setDefaultHomeId(homeDefaultRequest.getHomeId());
+            }
+
+            userRepository.save(user);
+
+            UserResponse userResponse = UserResponse.from(user);
+
+            return ResponseBuilder.successResponse("Set default home success", userResponse, StatusCodeEnum.USER1200);
         } catch (Exception e) {
             return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
         }
