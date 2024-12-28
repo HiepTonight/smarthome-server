@@ -18,5 +18,5 @@ public class UserInfoUpdateRequest {
 
     private String about;
 
-    private String homeDefaultId;
+    private String defaultHomeId;
 }
