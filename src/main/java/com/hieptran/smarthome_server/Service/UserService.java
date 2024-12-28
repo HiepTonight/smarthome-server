@@ -121,8 +121,8 @@ public class UserService {
                 user.setAbout(userInfoUpdateRequest.getAbout());
             }
 
-            if (userInfoUpdateRequest.getHomeDefaultId() != null && !userInfoUpdateRequest.getHomeDefaultId().equals(user.getDefaultHomeId())) {
-                user.setDefaultHomeId(userInfoUpdateRequest.getHomeDefaultId());
+            if (userInfoUpdateRequest.getDefaultHomeId() != null && !userInfoUpdateRequest.getDefaultHomeId().equals(user.getDefaultHomeId())) {
+                user.setDefaultHomeId(userInfoUpdateRequest.getDefaultHomeId());
             }
 
             userRepository.save(user);
