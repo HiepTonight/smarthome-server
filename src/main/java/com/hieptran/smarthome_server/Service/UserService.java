@@ -5,6 +5,7 @@ import com.hieptran.smarthome_server.dto.ApiResponse;
 import com.hieptran.smarthome_server.dto.StatusCodeEnum;
 import com.hieptran.smarthome_server.dto.builder.ResponseBuilder;
 import com.hieptran.smarthome_server.dto.requests.*;
+import com.hieptran.smarthome_server.dto.responses.AccessTokenResponse;
 import com.hieptran.smarthome_server.dto.responses.UserLoginResponse;
 import com.hieptran.smarthome_server.dto.responses.UserResponse;
 import com.hieptran.smarthome_server.model.User;
@@ -71,9 +72,12 @@ public class UserService {
 
             String accessToken = jwtService.generateToken(user.get());
 
+            String refreshToken = jwtService.refreshToken(user.get());
+
             UserLoginResponse userLoginResponse = UserLoginResponse.builder()
                     .userInfo(UserResponse.from(user.get()))
                     .accessToken(accessToken)
+                    .refreshToken(refreshToken)
                     .build();
 
             return ResponseBuilder.successResponse("Login success", userLoginResponse, StatusCodeEnum.USER1200);
@@ -228,6 +232,38 @@ public class UserService {
             String token = jwtService.getJwtFromRequest(request);
 
             return ResponseBuilder.successResponse("Token is valid", jwtService.validateToken(token), StatusCodeEnum.USER1200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
+        }
+    }
+
+    public ResponseEntity<ApiResponse<AccessTokenResponse>> refreshToken(RefreshTokenRequest request) {
+        try {
+            String refreshToken = request.getRefreshToken();
+
+            if (refreshToken == null) {
+                return ResponseBuilder.badRequestResponse("Refresh token is required", StatusCodeEnum.USER0200);
+            }
+
+            if (!jwtService.validateToken(refreshToken)) {
+                return ResponseBuilder.badRequestResponse("Refresh token is invalid", StatusCodeEnum.USER0200);
+            }
+
+            String userId = jwtService.getUserIdFromToken(refreshToken);
+
+            User user = userRepository.findById(userId).orElse(null);
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.USER0200);
+            }
+
+            String accessToken = jwtService.generateToken(user);
+
+            AccessTokenResponse accessTokenResponse = AccessTokenResponse.builder()
+                    .accessToken(accessToken)
+                    .build();
+
+            return ResponseBuilder.successResponse("Refresh token success", accessTokenResponse, StatusCodeEnum.USER1200);
         } catch (Exception e) {
             return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
         }

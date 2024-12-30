@@ -54,29 +54,23 @@ public class JwtService {
     }
 
     public String generateToken(User user) {
-        String token = Jwts.builder()
+        return Jwts.builder()
                 .setSubject(user.getUsername())
                 .claim("user", user.getId().toString())
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 86400000))
+                .setExpiration(new Date(System.currentTimeMillis() + 15 * 60 * 1000)) // 15 minutes
                 .signWith(SignatureAlgorithm.HS512, secretKey)
                 .compact();
-        return token;
     }
 
-    public String refreshToken(String token) {
-        Claims claims = Jwts.parser()
-                .setSigningKey(secretKey)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-
-        String username = claims.getSubject();
-        LinkedHashMap<String, Object> linkedHashMap = (LinkedHashMap<String, Object>) claims.get("user");
-
-        User user = objectMapper.convertValue(linkedHashMap, User.class);
-
-        return generateToken(user);
+    public String refreshToken(User user) {
+        return Jwts.builder()
+                .setSubject(user.getUsername())
+                .claim("user", user.getId().toString())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000)) // 1 day
+                .signWith(SignatureAlgorithm.HS512, secretKey)
+                .compact();
     }
 
     public String getJwtFromRequest(HttpServletRequest request) {

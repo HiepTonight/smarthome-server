@@ -3,6 +3,7 @@ package com.hieptran.smarthome_server.controller;
 import com.hieptran.smarthome_server.Service.UserService;
 import com.hieptran.smarthome_server.dto.ApiResponse;
 import com.hieptran.smarthome_server.dto.requests.*;
+import com.hieptran.smarthome_server.dto.responses.AccessTokenResponse;
 import com.hieptran.smarthome_server.dto.responses.UserLoginResponse;
 import com.hieptran.smarthome_server.dto.responses.UserResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -46,6 +47,11 @@ public class UserController {
     @PostMapping("/introspect")
     public ResponseEntity<ApiResponse<Boolean>> introspect(HttpServletRequest request) {
         return userService.introspectToken(request);
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<ApiResponse<AccessTokenResponse>> refreshToken(@RequestBody RefreshTokenRequest refreshTokenRequest) {
+        return userService.refreshToken(refreshTokenRequest);
     }
 
     @PostMapping("/update-homeDefault")
