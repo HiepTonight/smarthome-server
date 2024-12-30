@@ -132,6 +132,28 @@ public class HomeService {
         }
     }
 
+    public ResponseEntity<ApiResponse<HomeResponse>> getDefaultHome() {
+        try {
+            User user = userService.getUserFromContext();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.HOME0200);
+            }
+
+            Home home = homeRepository.findById(user.getDefaultHomeId()).orElse(null);
+
+            if (home == null) {
+                return ResponseBuilder.badRequestResponse("Home not found", StatusCodeEnum.HOME0200);
+            }
+
+            HomeResponse homeResponse = HomeResponse.from(home);
+
+            return ResponseBuilder.successResponse("Home found", homeResponse, StatusCodeEnum.HOME1200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.HOME0200);
+        }
+    }
+
     public ResponseEntity<ApiResponse<Objects>> deleteHome(String id) {
         try {
             User user = userService.getUserFromContext();
