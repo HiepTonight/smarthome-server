@@ -17,7 +17,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -154,6 +156,11 @@ public class DeviceService {
 //            throw new RuntimeException("Failed to apply device setting");
 //        }
 //    }
+
+    public void sendDeviceUpdate(Device device) throws IOException {
+        SseEmitter emitter = new SseEmitter();
+        emitter.send(SseEmitter.event().data(DeviceResponse.fromDevice(device)));
+    }
 
     private void processDoor(int status, String homePodId) {
         String message = String.format("{\"door\": %d}", status);
