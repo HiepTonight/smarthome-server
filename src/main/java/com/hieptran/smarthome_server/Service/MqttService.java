@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hieptran.smarthome_server.config.CacheConfig;
+import com.hieptran.smarthome_server.dto.EventCodeEnum;
 import com.hieptran.smarthome_server.dto.requests.SensorDataRequest;
+import com.hieptran.smarthome_server.dto.responses.DeviceResponse;
 import com.hieptran.smarthome_server.model.*;
 import com.hieptran.smarthome_server.repository.DeviceRepository;
 import com.hieptran.smarthome_server.repository.HomeRepository;
@@ -30,6 +32,8 @@ public class MqttService {
     private final Mqtt5AsyncClient client;
 
     private final SensorDataService sensorDataService;
+
+    private final SseService sseService;
 
     private final HomeRepository homeRepository;
 
@@ -136,6 +140,14 @@ public class MqttService {
 
             publish(homePodId, message);
 
+            if (!sseService.emitters.isEmpty()) {
+                sseService.send(
+                        EventCodeEnum.DEVICE_UPDATE_EVENT,
+                        EventCodeEnum.DEVICE_UPDATE_EVENT,
+                        DeviceResponse.fromDevice(door)
+                );
+            }
+
             System.out.println((faceValue == 1 ? "Opening" : "Closing") + " door for homePodId: " + homePodId);
         }
     }
@@ -191,12 +203,35 @@ public class MqttService {
 
     private void processDevices(List<DeviceAuto> devices, String topic) throws JsonProcessingException {
         if (devices != null) {
+            List<Device> deviceList = deviceRepository.findAllByHomePodId(topic);
+            Map<String, Device> deviceMap = deviceList.stream()
+                    .collect(Collectors.toMap(device -> device.getId().toString(), device -> device));
+
+            for (DeviceAuto deviceAuto : devices) {
+                Device device = deviceMap.get(deviceAuto.getId());
+                if (device != null) {
+                    device.setStatus("ON".equalsIgnoreCase(deviceAuto.getAction()) ? 1 : 0);
+                }
+            }
+
+            deviceRepository.saveAll(deviceMap.values());
+
             Map<String, Integer> deviceStatus = devices.stream()
                     .collect(Collectors.toMap(
                             deviceAuto -> deviceAuto.getName().toLowerCase().replace(" ", "_"),
                             deviceAuto -> "ON".equalsIgnoreCase(deviceAuto.getAction()) ? 1 : 0
                     ));
+
             publish(topic, objectMapper.writeValueAsString(deviceStatus));
+
+            if (!sseService.emitters.isEmpty()) {
+                sseService.send(
+                        EventCodeEnum.DEVICE_UPDATE_EVENT,
+                        EventCodeEnum.DEVICE_UPDATE_EVENT,
+                        deviceMap.values()
+                );
+            }
+
         }
     }
 
