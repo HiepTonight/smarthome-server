@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
 import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
@@ -126,5 +127,10 @@ public class GlobalExceptionHandler {
                 .statusCode(StatusCodeEnum.EXCEPTION.toString())
                 .build();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(dto);
+    }
+
+    @ExceptionHandler(AsyncRequestTimeoutException.class)
+    public void handleAsyncRequestTimeoutException(AsyncRequestTimeoutException ex) {
+        log.error("AsyncRequestTimeoutException: ", ex);
     }
 }
