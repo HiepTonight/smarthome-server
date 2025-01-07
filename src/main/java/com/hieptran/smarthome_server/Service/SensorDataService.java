@@ -43,7 +43,7 @@ public class SensorDataService {
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    public void saveSensorData(SensorDataRequest sensorDataRequest) {
+    public SensorDataResponse saveSensorData(SensorDataRequest sensorDataRequest) {
         SensorData sensorData = SensorData.builder()
                 .temp(sensorDataRequest.getTemp())
                 .humi(sensorDataRequest.getHumi())
@@ -52,6 +52,7 @@ public class SensorDataService {
                 .build();
         try {
             sensorDataRepository.save(sensorData);
+            return SensorDataResponse.fromSensorData(sensorData);
         } catch (Exception e) {
             throw new RuntimeException("Save sensor data failed");
         }

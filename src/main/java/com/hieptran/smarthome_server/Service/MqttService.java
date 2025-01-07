@@ -7,6 +7,7 @@ import com.hieptran.smarthome_server.config.CacheConfig;
 import com.hieptran.smarthome_server.dto.EventCodeEnum;
 import com.hieptran.smarthome_server.dto.requests.SensorDataRequest;
 import com.hieptran.smarthome_server.dto.responses.DeviceResponse;
+import com.hieptran.smarthome_server.dto.responses.SensorDataResponse;
 import com.hieptran.smarthome_server.model.*;
 import com.hieptran.smarthome_server.repository.DeviceRepository;
 import com.hieptran.smarthome_server.repository.HomeRepository;
@@ -140,13 +141,13 @@ public class MqttService {
 
             publish(homePodId, message);
 
-            if (!sseService.emitters.isEmpty()) {
-                sseService.send(
-                        EventCodeEnum.DEVICE_UPDATE_EVENT,
-                        EventCodeEnum.DEVICE_UPDATE_EVENT,
-                        DeviceResponse.fromDevice(door)
-                );
-            }
+            sseService.send(
+                    homePodId,
+                    EventCodeEnum.DEVICE_UPDATE_EVENT,
+                    EventCodeEnum.DEVICE_UPDATE_EVENT,
+                    List.of(DeviceResponse.fromDevice(door)
+                    )
+            );
 
             System.out.println((faceValue == 1 ? "Opening" : "Closing") + " door for homePodId: " + homePodId);
         }
@@ -184,7 +185,15 @@ public class MqttService {
                     homeOption.getLightAutoOption().getLowDevices(),
                     homePodId);
         }
-        sensorDataService.saveSensorData(sensorDataRequest);
+
+        SensorDataResponse sensorDataResponse =sensorDataService.saveSensorData(sensorDataRequest);
+
+        sseService.send(
+                homePodId,
+                EventCodeEnum.SENSOR_DATA_UPDATE_EVENT,
+                EventCodeEnum.SENSOR_DATA_UPDATE_EVENT,
+                sensorDataResponse
+        );
     }
 
     private <T extends Number> void processSensorData(T sensorData, Number highValue, Number lowValue, List<DeviceAuto> highDevices, List<DeviceAuto> lowDevices, String topic) throws JsonProcessingException {
@@ -224,13 +233,14 @@ public class MqttService {
 
             publish(topic, objectMapper.writeValueAsString(deviceStatus));
 
-            if (!sseService.emitters.isEmpty()) {
-                sseService.send(
-                        EventCodeEnum.DEVICE_UPDATE_EVENT,
-                        EventCodeEnum.DEVICE_UPDATE_EVENT,
-                        deviceMap.values()
-                );
-            }
+            sseService.send(
+                    topic,
+                    EventCodeEnum.DEVICE_UPDATE_EVENT,
+                    EventCodeEnum.DEVICE_UPDATE_EVENT,
+                    deviceMap.values().stream()
+                            .map(DeviceResponse::fromDevice)
+                            .toList()
+            );
 
         }
     }
