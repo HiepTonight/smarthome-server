@@ -122,14 +122,7 @@ public class DeviceService {
 
             DeviceResponse response = DeviceResponse.fromDevice(device);
 
-            if (!sseService.emitters.isEmpty()) {
-                sseService.send(
-                        EventCodeEnum.DEVICE_UPDATE_EVENT,
-                        EventCodeEnum.DEVICE_UPDATE_EVENT,
-//                        "Device status updated",
-                        response
-                );
-            }
+            sseService.send(homePodId, EventCodeEnum.DEVICE_UPDATE_EVENT, EventCodeEnum.DEVICE_UPDATE_EVENT, response);
 
             return ResponseBuilder.successResponse("Device triggered", response, StatusCodeEnum.DEVICE0300);
 

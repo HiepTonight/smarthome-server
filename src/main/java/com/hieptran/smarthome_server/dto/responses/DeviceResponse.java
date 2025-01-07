@@ -21,6 +21,8 @@ public class DeviceResponse {
 
     private String description;
 
+    private String homePodId;
+
     private int status;
 
     private String icon;
@@ -30,6 +32,7 @@ public class DeviceResponse {
                 .id(device.getId().toHexString())
                 .name(device.getName())
                 .description(device.getDescription())
+                .homePodId(device.getHomePodId())
                 .status(device.getStatus())
                 .icon(device.getIcon())
                 .createdAt(device.getCreatedAt())

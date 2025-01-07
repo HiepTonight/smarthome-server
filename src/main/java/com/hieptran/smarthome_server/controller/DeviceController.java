@@ -21,16 +21,9 @@ import java.util.Objects;
 public class DeviceController {
     private final DeviceService deviceService;
 
-    private final SseService sseService;
-
     @GetMapping("")
     public ResponseEntity<ApiResponse<List<DeviceResponse>>> getDevices(@RequestParam("id")String homePodId) {
         return deviceService.getAllDevicesWithHomePodId(homePodId);
-    }
-
-    @GetMapping("/sse")
-    public SseEmitter streamDeviceEvents() throws AccessDeniedException {
-        return sseService.addEmitter();
     }
 
     @PostMapping("/{id}")
