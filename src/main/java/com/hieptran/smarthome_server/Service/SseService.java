@@ -19,9 +19,7 @@ import java.util.concurrent.Executors;
 public class SseService {
     private final UserService userService;
 
-//    private final CopyOnWriteArrayList<SseEmitter> emitters = new CopyOnWriteArrayList<>();
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
-
 
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -36,7 +34,7 @@ public class SseService {
             throw new AccessDeniedException("HomePod not found");
         }
 
-        SseEmitter emitter = new SseEmitter();
+        SseEmitter emitter = new SseEmitter(100000L);
 
         emitters.computeIfAbsent(homePodId, k -> new CopyOnWriteArrayList<>());
 
@@ -49,25 +47,39 @@ public class SseService {
             }
         }
 
-        send(homePodId, EventCodeEnum.CLIENT_CONNECTED, EventCodeEnum.CLIENT_CONNECTED, "Connected successfully to SSE");
+        send(emitter, EventCodeEnum.CLIENT_CONNECTED, EventCodeEnum.CLIENT_CONNECTED, "Connected successfully to SSE");
 
         emitter.onCompletion(() -> {
-            emitters.remove(homePodId);
+            emitterList.remove(emitter);
             System.out.println("Client disconnected: onCompletion");
         });
 
         emitter.onTimeout(() -> {
             System.out.println("Client disconnected: onTimeout");
             emitter.complete();
-            emitters.remove(homePodId);
+            emitterList.remove(emitter);
         });
 
-        emitter.onError((e) -> emitters.remove(homePodId));
+        emitter.onError((e) -> emitterList.remove(emitter));
         return emitter;
     }
 
     public boolean isEmittersEmpty() {
         return emitters.isEmpty();
+    }
+
+    public <T> void send(SseEmitter emitter, EventCodeEnum eventId , EventCodeEnum eventName, T data) {
+        SseEmitter.SseEventBuilder event = SseEmitter.event()
+                .id(eventId.toString())
+                .name(eventName.toString())
+                .data(data);
+
+        try {
+            emitter.send(event);
+        } catch (IOException e) {
+            emitter.completeWithError(e);
+            System.out.println("Emitter failed: " + emitter);
+        }
     }
 
     public <T> void send(String homePodId, EventCodeEnum eventId , EventCodeEnum eventName ,T data) {
@@ -81,30 +93,30 @@ public class SseService {
 
         if (emitterList != null) {
             for (SseEmitter emitter : emitterList) {
-                executor.submit(() -> {
-                    try {
-                        emitter.send(event);
-                    } catch (IOException e) {
-                        emitter.completeWithError(e);
-                        emitterList.remove(emitter);
-                        System.out.println("Emitter failed: " + emitter);
-                    }
-                });
+                try {
+                    emitter.send(event);
+                } catch (IOException e) {
+                    emitter.completeWithError(e);
+                    emitterList.remove(emitter);
+                    System.out.println("Emitter failed: " + emitter);
+                }
             }
         }
 
-//        for (SseEmitter emitter : emitters) {
-//            executor.submit(() -> {
-//                try {
-//                    emitter.send(event);
-//
-//                } catch (IOException e) {
-//                    emitter.completeWithError(e);
-//                    emitters.remove(emitter);
-//                    System.out.println("Emitter failed: " + emitter);
-//                }
-//            });
+//        if (emitterList != null) {
+//            for (SseEmitter emitter : emitterList) {
+//                executor.submit(() -> {
+//                    try {
+//                        emitter.send(event);
+//                    } catch (IOException e) {
+//                        emitter.completeWithError(e);
+//                        emitterList.remove(emitter);
+//                        System.out.println("Emitter failed: " + emitter);
+//                    }
+//                });
+//            }
 //        }
+
     }
 }
 
