@@ -29,7 +29,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    public ResponseEntity<ApiResponse<UserResponse>> createUser(UserRequest userRequest) {
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(UserCreateRequest userRequest) {
         try {
             if (userRepository.existsByUsername(userRequest.getUsername())) {
                 return ResponseBuilder.badRequestResponse("Username is already taken", StatusCodeEnum.EXCEPTION);
@@ -39,11 +39,15 @@ public class UserService {
                 return ResponseBuilder.badRequestResponse("Email is already taken", StatusCodeEnum.EXCEPTION);
             }
 
+            if (!Objects.equals(userRequest.getPassword(), userRequest.getConfirmPassword())) {
+                return ResponseBuilder.badRequestResponse("Password and confirm password do not match", StatusCodeEnum.USER0200);
+            }
+
             User user = User.builder()
                     .username(userRequest.getUsername())
                     .password(passwordEncoder.encode(userRequest.getPassword()))
                     .email(userRequest.getEmail())
-                    .displayName(userRequest.getDisplayName())
+//                    .displayName(userRequest.getDisplayName())
                     .role("client")
                     .isActivated(true)
                     .build();
