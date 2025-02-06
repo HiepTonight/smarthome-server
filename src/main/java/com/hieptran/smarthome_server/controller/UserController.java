@@ -19,7 +19,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<UserResponse>> createUser(@RequestBody UserRequest userRequest) {
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(@RequestBody UserCreateRequest userRequest) {
         return userService.createUser(userRequest);
     }
 
