@@ -47,6 +47,9 @@ public class User {
     @Field("about")
     private String about;
 
+    @Field("avatar")
+    private String avatar;
+
     @Field("role")
     private String role;
 

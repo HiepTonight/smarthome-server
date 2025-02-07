@@ -29,7 +29,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    public ResponseEntity<ApiResponse<UserResponse>> createUser(UserCreateRequest userRequest) {
+    public ResponseEntity<ApiResponse<UserLoginResponse>> createUser(UserCreateRequest userRequest) {
         try {
             if (userRepository.existsByUsername(userRequest.getUsername())) {
                 return ResponseBuilder.badRequestResponse("Username is already taken", StatusCodeEnum.EXCEPTION);
@@ -43,11 +43,14 @@ public class UserService {
                 return ResponseBuilder.badRequestResponse("Password and confirm password do not match", StatusCodeEnum.USER0200);
             }
 
+            String avatar = userRequest.getAvatar() != null ? userRequest.getAvatar() : "";
+
             User user = User.builder()
                     .username(userRequest.getUsername())
                     .password(passwordEncoder.encode(userRequest.getPassword()))
                     .email(userRequest.getEmail())
 //                    .displayName(userRequest.getDisplayName())
+                    .avatar(avatar)
                     .role("client")
                     .isActivated(true)
                     .build();
@@ -56,7 +59,13 @@ public class UserService {
 
             UserResponse userResponse = UserResponse.from(user);
 
-            return ResponseBuilder.successResponse("User created", userResponse, StatusCodeEnum.USER1200);
+            UserLoginResponse userLoginResponse = UserLoginResponse.builder()
+                    .userInfo(userResponse)
+                    .accessToken(jwtService.generateToken(user))
+                    .refreshToken(jwtService.refreshToken(user))
+                    .build();
+
+            return ResponseBuilder.successResponse("User created", userLoginResponse, StatusCodeEnum.USER1200);
         } catch (Exception e) {
             return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
         }

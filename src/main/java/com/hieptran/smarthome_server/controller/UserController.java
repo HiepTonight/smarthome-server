@@ -1,5 +1,6 @@
 package com.hieptran.smarthome_server.controller;
 
+import com.hieptran.smarthome_server.Service.AuthService;
 import com.hieptran.smarthome_server.Service.UserService;
 import com.hieptran.smarthome_server.dto.ApiResponse;
 import com.hieptran.smarthome_server.dto.requests.*;
@@ -18,14 +19,21 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
     private final UserService userService;
 
+    private final AuthService authService;
+
     @PostMapping
-    public ResponseEntity<ApiResponse<UserResponse>> createUser(@RequestBody UserCreateRequest userRequest) {
+    public ResponseEntity<ApiResponse<UserLoginResponse>> createUser(@RequestBody UserCreateRequest userRequest) {
         return userService.createUser(userRequest);
     }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<UserLoginResponse>> login(@RequestBody AuthenticationRequest authenticationRequest) {
         return userService.login(authenticationRequest);
+    }
+
+    @PostMapping("/oauth/soccial-login")
+    public ResponseEntity<ApiResponse<String>> socialLogin() {
+        return authService.generateAuthUrl();
     }
 
     @PostMapping("/update-info")

@@ -12,6 +12,8 @@ public class UserCreateRequest {
 
     private String email;
 
+    private String avatar;
+
     private String password;
 
     private String confirmPassword;

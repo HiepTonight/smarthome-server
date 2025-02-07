@@ -9,6 +9,18 @@ spring:
       enabled: true
   application:
     name: smarthome-server
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: 990560564943-b35chqgl3oe3mfa1tpa0ubd94idlo3un.apps.googleusercontent.com
+            client-secret: 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
+            redirect-uri: "${GOOGLE_REDIRECT_URI:http://localhost:8080/api/v1/auth/google/callback}"
+            user-info-uri: "https://www.googleapis.com/oauth2/v3/userinfo"
+#            resource-server:
+#              opaque-token:
+#                introspection-uri: "https://www.googleapis.com"
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb+srv://hieptram40:123@cluster0.02rer4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0}
