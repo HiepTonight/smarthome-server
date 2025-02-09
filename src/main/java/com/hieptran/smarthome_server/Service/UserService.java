@@ -8,9 +8,14 @@ import com.hieptran.smarthome_server.dto.requests.*;
 import com.hieptran.smarthome_server.dto.responses.AccessTokenResponse;
 import com.hieptran.smarthome_server.dto.responses.UserLoginResponse;
 import com.hieptran.smarthome_server.dto.responses.UserResponse;
+import com.hieptran.smarthome_server.model.OauthToken;
 import com.hieptran.smarthome_server.model.User;
+import com.hieptran.smarthome_server.model.VerificationCode;
+import com.hieptran.smarthome_server.repository.OAuthTokenRepository;
 import com.hieptran.smarthome_server.repository.UserRepository;
+import com.hieptran.smarthome_server.utils.EncryptionUtils;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +23,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -26,10 +33,18 @@ import java.util.Optional;
 @Slf4j
 public class UserService {
     private final UserRepository userRepository;
+
+    private final OAuthTokenRepository oAuthTokenRepository;
+
     private final PasswordEncoder passwordEncoder;
+
     private final JwtService jwtService;
 
-    public ResponseEntity<ApiResponse<UserResponse>> createUser(UserCreateRequest userRequest) {
+    private final TokenService tokenService;
+
+    private final EmailService emailService;
+
+    public ResponseEntity<ApiResponse<UserLoginResponse>> createUser(UserCreateRequest userRequest) {
         try {
             if (userRepository.existsByUsername(userRequest.getUsername())) {
                 return ResponseBuilder.badRequestResponse("Username is already taken", StatusCodeEnum.EXCEPTION);
@@ -43,20 +58,123 @@ public class UserService {
                 return ResponseBuilder.badRequestResponse("Password and confirm password do not match", StatusCodeEnum.USER0200);
             }
 
+            String avatar = userRequest.getAvatar() != null ? userRequest.getAvatar() : "";
+
             User user = User.builder()
                     .username(userRequest.getUsername())
                     .password(passwordEncoder.encode(userRequest.getPassword()))
                     .email(userRequest.getEmail())
 //                    .displayName(userRequest.getDisplayName())
+                    .avatar(avatar)
                     .role("client")
-                    .isActivated(true)
+                    .isActivated(false)
                     .build();
 
             userRepository.save(user);
 
+            String code = EncryptionUtils.generateVerificationCode();
+
+            VerificationCode verificationCode = VerificationCode.builder()
+                    .code(code)
+                    .email(user.getEmail())
+                    .createdAt(LocalDateTime.now())
+                    .expiredAt(LocalDateTime.now().plusMinutes(10))
+                    .build();
+
+            emailService.sendVerificationEmail(user.getEmail(), user.getUsername(), code, 10);
+
             UserResponse userResponse = UserResponse.from(user);
 
-            return ResponseBuilder.successResponse("User created", userResponse, StatusCodeEnum.USER1200);
+            UserLoginResponse userLoginResponse = UserLoginResponse.builder()
+                    .userInfo(userResponse)
+                    .accessToken(jwtService.generateToken(user))
+                    .refreshToken(jwtService.refreshToken(user))
+                    .build();
+
+            return ResponseBuilder.successResponse("User created", userLoginResponse, StatusCodeEnum.USER1200);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
+        }
+    }
+
+    public ResponseEntity<ApiResponse<UserLoginResponse>> oAuthGoogleUserCreate(
+            OAuthGoogleUserCreateRequest oAuthGoogleUserCreateRequest,
+            OAuthTokenRequest oAuthTokenRequest
+            ) {
+        try {
+//            String tokenId = tokenService.saveToken(
+//                    oAuthGoogleUserCreateRequest.getEmail(),
+//                    oAuthTokenRequest.getAccessToken(),
+//                    oAuthTokenRequest.getRefreshToken()
+//            );
+
+            String tokenId = "";
+
+            if (userRepository.existsByEmail(oAuthGoogleUserCreateRequest.getEmail())) {
+                User user = userRepository.findByEmail(oAuthGoogleUserCreateRequest.getEmail());
+
+                if (user.getOauthToken() == null) {
+                    user.setOauthToken(new ArrayList<>());
+                }
+
+                user.setGoogleId(oAuthGoogleUserCreateRequest.getGoogleId());
+
+                return getApiResponseResponseEntity(user, tokenId);
+            }
+
+            User user = User.builder()
+                    .email(oAuthGoogleUserCreateRequest.getEmail())
+                    .displayName(oAuthGoogleUserCreateRequest.getDisplayName())
+                    .avatar(oAuthGoogleUserCreateRequest.getAvatar())
+                    .googleId(oAuthGoogleUserCreateRequest.getGoogleId())
+                    .role("client")
+                    .isActivated(true)
+                    .build();
+
+            return getApiResponseResponseEntity(user, tokenId);
+        } catch (Exception e) {
+            return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
+        }
+    }
+
+    @NotNull
+    private ResponseEntity<ApiResponse<UserLoginResponse>> getApiResponseResponseEntity(User user, String tokenId) {
+//        user.getOauthToken().add(tokenId);
+
+        userRepository.save(user);
+
+        String accessToken = jwtService.generateToken(user);
+
+        String refreshToken = jwtService.refreshToken(user);
+
+        UserLoginResponse userLoginResponse = UserLoginResponse.builder()
+                .userInfo(UserResponse.from(user))
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+
+        return ResponseBuilder.successResponse("Login success", userLoginResponse, StatusCodeEnum.USER1200);
+    }
+
+    public ResponseEntity<ApiResponse<UserLoginResponse>> oAuthGoogleUserLogin (OAuthGoogleUserLoginRequest oAuthGoogleUserLoginRequest) {
+        try {
+            User user = oAuthGoogleUserLoginRequest.getUser();
+
+            if (user == null) {
+                return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.USER0200);
+            }
+
+            String accessToken = jwtService.generateToken(user);
+
+            String refreshToken = jwtService.refreshToken(user);
+
+            UserLoginResponse userLoginResponse = UserLoginResponse.builder()
+                    .userInfo(UserResponse.from(user))
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .build();
+
+            return ResponseBuilder.successResponse("Login success", userLoginResponse, StatusCodeEnum.USER1200);
         } catch (Exception e) {
             return ResponseBuilder.badRequestResponse(e.getMessage(), StatusCodeEnum.USER0200);
         }
@@ -72,6 +190,10 @@ public class UserService {
 
             if (!passwordEncoder.matches(authenticationRequest.getPassword(), user.get().getPassword())) {
                 return ResponseBuilder.badRequestResponse("Invalid password", StatusCodeEnum.USER0200);
+            }
+
+            if (!user.get().isActivated()) {
+                return ResponseBuilder.badRequestResponse("User is not activated", StatusCodeEnum.USER0200);
             }
 
             String accessToken = jwtService.generateToken(user.get());
@@ -285,5 +407,27 @@ public class UserService {
 
             return null;
         }
+    }
+
+    public ResponseEntity<Boolean> isEmailExist(String email) {
+        return ResponseEntity.ok(userRepository.existsByEmail(email));
+    }
+
+    public ResponseEntity<Boolean> isUsernameExist(String username) {
+        return ResponseEntity.ok(userRepository.existsByUsername(username));
+    }
+
+    public void resendVerificationEmail(String email) {
+        User user = userRepository.findByEmail(email);
+
+        if (user == null) {
+            return;
+        }
+
+        emailService.sendVerificationEmail(
+                email,
+                user.getUsername(),
+                EncryptionUtils.generateVerificationCode(),
+                10);
     }
 }

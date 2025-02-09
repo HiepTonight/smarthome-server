@@ -17,6 +17,8 @@ public class UserResponse {
 
     private String displayName;
 
+    private String avatar;
+
     private String about;
 
     private String role;
@@ -31,6 +33,7 @@ public class UserResponse {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .displayName(user.getDisplayName())
+                .avatar(user.getAvatar())
                 .about(user.getAbout())
                 .role(user.getRole())
                 .isActivated(user.isActivated())

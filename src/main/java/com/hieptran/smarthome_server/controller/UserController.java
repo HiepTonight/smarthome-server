@@ -1,5 +1,6 @@
 package com.hieptran.smarthome_server.controller;
 
+import com.hieptran.smarthome_server.Service.AuthService;
 import com.hieptran.smarthome_server.Service.UserService;
 import com.hieptran.smarthome_server.dto.ApiResponse;
 import com.hieptran.smarthome_server.dto.requests.*;
@@ -18,14 +19,21 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
     private final UserService userService;
 
+    private final AuthService authService;
+
     @PostMapping
-    public ResponseEntity<ApiResponse<UserResponse>> createUser(@RequestBody UserCreateRequest userRequest) {
+    public ResponseEntity<ApiResponse<UserLoginResponse>> createUser(@RequestBody UserCreateRequest userRequest) {
         return userService.createUser(userRequest);
     }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<UserLoginResponse>> login(@RequestBody AuthenticationRequest authenticationRequest) {
         return userService.login(authenticationRequest);
+    }
+
+    @PostMapping("/oauth/soccial-login")
+    public ResponseEntity<ApiResponse<String>> socialLogin() {
+        return authService.generateAuthUrl();
     }
 
     @PostMapping("/update-info")
@@ -57,6 +65,16 @@ public class UserController {
     @PostMapping("/update-homeDefault")
     private ResponseEntity<ApiResponse<UserResponse>> updateHomeDefault(@RequestBody HomeDefaultRequest userHomeDefaultRequest) {
         return userService.setHomeDefault(userHomeDefaultRequest);
+    }
+
+    @GetMapping("/username-exist")
+    public ResponseEntity<Boolean> checkUsernameExist(@RequestParam String username) {
+        return userService.isUsernameExist(username);
+    }
+
+    @GetMapping("/email-exist")
+    public ResponseEntity<Boolean> checkEmailExist(@RequestParam String email) {
+        return userService.isEmailExist(email);
     }
 
 }

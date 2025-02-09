@@ -7,14 +7,14 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserCreateRequest {
-    private String username;
+public class OAuthGoogleUserCreateRequest {
+
+    private String displayName;
 
     private String email;
 
     private String avatar;
 
-    private String password;
+    private String googleId;
 
-    private String confirmPassword;
 }

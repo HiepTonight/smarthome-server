@@ -7,14 +7,8 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserCreateRequest {
-    private String username;
-
+public class EmailVerificationRequest {
     private String email;
 
-    private String avatar;
-
-    private String password;
-
-    private String confirmPassword;
+    private String code;
 }
