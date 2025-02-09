@@ -67,4 +67,14 @@ public class UserController {
         return userService.setHomeDefault(userHomeDefaultRequest);
     }
 
+    @GetMapping("/username-exist")
+    public ResponseEntity<Boolean> checkUsernameExist(@RequestParam String username) {
+        return userService.isUsernameExist(username);
+    }
+
+    @GetMapping("/email-exist")
+    public ResponseEntity<Boolean> checkEmailExist(@RequestParam String email) {
+        return userService.isEmailExist(email);
+    }
+
 }

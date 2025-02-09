@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Document("users")
@@ -49,6 +50,15 @@ public class User {
 
     @Field("avatar")
     private String avatar;
+
+    @Field("githubId")
+    private String githubId;
+
+    @Field("googleId")
+    private String googleId;
+
+    @Field("oauthToken")
+    private List<String> oauthToken;
 
     @Field("role")
     private String role;

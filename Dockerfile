@@ -18,4 +18,6 @@ USER smarthome
 EXPOSE 8080
 
 ENV JAVA_OPTIONS="-Xmx2048m -Xms256m"
+ENV GOOGLE_CLIENT_SECRET
+
 ENTRYPOINT java -jar /run/smarthome-server-0.0.1-SNAPSHOT.jar

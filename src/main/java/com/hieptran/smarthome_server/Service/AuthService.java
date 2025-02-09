@@ -5,13 +5,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hieptran.smarthome_server.dto.ApiResponse;
 import com.hieptran.smarthome_server.dto.StatusCodeEnum;
 import com.hieptran.smarthome_server.dto.builder.ResponseBuilder;
-import com.hieptran.smarthome_server.dto.requests.UserCreateRequest;
+import com.hieptran.smarthome_server.dto.requests.*;
 import com.hieptran.smarthome_server.dto.responses.UserLoginResponse;
 import com.hieptran.smarthome_server.dto.responses.UserResponse;
-import jakarta.servlet.http.HttpServletResponse;
+import com.hieptran.smarthome_server.model.OauthToken;
+import com.hieptran.smarthome_server.model.User;
+import com.hieptran.smarthome_server.model.VerificationCode;
+import com.hieptran.smarthome_server.repository.UserRepository;
+import com.hieptran.smarthome_server.repository.VerificationCodeRepository;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -20,6 +25,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -43,7 +50,13 @@ public class AuthService {
 
     private final ObjectMapper objectMapper;
 
+    private final UserRepository userRepository;
+
+    private final VerificationCodeRepository verificationCodeRepository;
+
     private final UserService userService;
+
+    private final JwtService jwtService;
 
     public ResponseEntity<ApiResponse<String>> generateAuthUrl() {
         String state = UUID.randomUUID().toString();
@@ -55,29 +68,19 @@ public class AuthService {
                 .queryParam("redirect_uri", googleRedirectUri)
                 .queryParam("response_type", "code")
                 .queryParam("scope", "email profile")
-//                .queryParam("state", state)
-                // Thêm các tham số tùy chọn
-                .queryParam("access_type", "offline") // Để nhận refresh token (nếu cần)
-                .queryParam("prompt", "consent") // Yêu cầu người dùng cấp quyền mỗi lần đăng nhập
+                .queryParam("state", state)
+                .queryParam("access_type", "offline")
+//                .queryParam("prompt", "consent") // Yêu cầu người dùng cấp quyền mỗi lần đăng nhập
                 .build()
                 .toUriString();
 
         return ResponseBuilder.successResponse("Authorization URL generated", authorizationUrl, StatusCodeEnum.USER0200);
     }
 
-    public ResponseEntity<ApiResponse<UserLoginResponse>> handleGoogleCallback(String code, HttpSession session, HttpServletResponse httpResponse) {
-        String storedState = (String) session.getAttribute("oauth2_state");
-
-//        if (state == null || !state.equals(storedState)) {
-//            throw new IllegalStateException("Invalid state parameter");
-////            return ResponseBuilder.badRequestResponse("Invalid state", StatusCodeEnum.USER1200);
-//        }
-//
-//        // Xóa state sau khi sử dụng
-//        session.removeAttribute("oauth2_state");
+    public ResponseEntity<ApiResponse<UserLoginResponse>> handleGoogleCallback(String authorizationCode) {
 
         String requestBody = UriComponentsBuilder.newInstance()
-                .queryParam("code", code) // Thêm authorization code
+                .queryParam("code", authorizationCode) // Thêm authorization code
                 .queryParam("client_id", googleClientId) // Thêm client_id
                 .queryParam("client_secret", googleClientSecret) // Thêm client_secret
                 .queryParam("redirect_uri", googleRedirectUri) // Thêm redirect_uri
@@ -86,7 +89,6 @@ public class AuthService {
                 .toString()
                 .replace("?", "");
 
-        // Tạo HTTP request
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://oauth2.googleapis.com/token"))
                 .header("Content-Type", "application/x-www-form-urlencoded")
@@ -97,42 +99,112 @@ public class AuthService {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                // Parse response để lấy access token
+
                 String responseBody = response.body();
                 JsonNode jsonNode = objectMapper.readTree(responseBody);
                 String accessToken = jsonNode.get("access_token").asText();
-                String refreshToken = jsonNode.get("refresh_token").asText();
+//                String refreshToken = jsonNode.get("refresh_token").asText();
 
 //              getUserInfoFromGoogle(accessToken);
                 HttpRequest userInfoRequest = HttpRequest.newBuilder()
                         .uri(URI.create(googleUserInfoUri))
                         .header("Authorization", "Bearer " + accessToken)
-                        .GET() // Sử dụng phương thức GET
-                        .build();
-                HttpResponse<String> userInfoResponse = httpClient.send(userInfoRequest, HttpResponse.BodyHandlers.ofString());
-                String Body = userInfoResponse.body();
-                JsonNode userInfoNode = objectMapper.readTree(Body);
-
-                String password = UUID.randomUUID().toString();
-
-                UserCreateRequest userCreateRequest = UserCreateRequest.builder()
-                        .email(userInfoNode.get("email").asText())
-                        .avatar(userInfoNode.get("picture").asText())
-                        .password(password)
-                        .confirmPassword(password)
+                        .GET()
                         .build();
 
-                httpResponse.sendRedirect("http://localhost:5173/dashboard");
-                return userService.createUser(userCreateRequest);
+                try {
+                    HttpResponse<String> userInfoResponse = httpClient.send(userInfoRequest, HttpResponse.BodyHandlers.ofString());
+                    String googleUserInfo = userInfoResponse.body();
+                    JsonNode googleUserInfoNode = objectMapper.readTree(googleUserInfo);
+
+                    User user = userRepository.findByGoogleId(googleUserInfoNode.get("sub").asText());
+
+                    if (user == null) {
+                        OAuthTokenRequest oAuthTokenRequest = OAuthTokenRequest.builder()
+                                .name("google")
+                                .accessToken(accessToken)
+                                .refreshToken(jsonNode.has("refresh_token") ? jsonNode.get("refresh_token").asText() : "")
+                                .build();
+
+                        OAuthGoogleUserCreateRequest oAuthGoogleUserCreateRequest = OAuthGoogleUserCreateRequest.builder()
+                                .displayName(googleUserInfoNode.get("name").asText())
+                                .email(googleUserInfoNode.get("email").asText())
+                                .avatar(googleUserInfoNode.get("picture").asText())
+                                .googleId(googleUserInfoNode.get("sub").asText())
+                                .build();
+
+                        return userService.oAuthGoogleUserCreate(oAuthGoogleUserCreateRequest , oAuthTokenRequest);
+                    }
+
+                    OAuthGoogleUserLoginRequest oAuthGoogleUserLoginRequest = OAuthGoogleUserLoginRequest.builder()
+                            .user(user)
+                            .build();
+
+                    return userService.oAuthGoogleUserLogin(oAuthGoogleUserLoginRequest);
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return ResponseBuilder.badRequestResponse("Failed to get user info from Google", StatusCodeEnum.USER0200);
+                }
+
             } else {
                 String errorResponse = response.body();
-                return ResponseBuilder.badRequestResponse("Failed to get access token", StatusCodeEnum.USER1200);
+                return ResponseBuilder.badRequestResponse(errorResponse, StatusCodeEnum.USER0200);
             }
 
         } catch (Exception e) {
 //            e.printStackTrace();
-            return ResponseBuilder.badRequestResponse("Failed to get access token", StatusCodeEnum.USER1200);
+            return ResponseBuilder.badRequestResponse("Failed to get access token from Google", StatusCodeEnum.USER0200);
         }
+
+    }
+
+    public ResponseEntity<ApiResponse<UserLoginResponse>> verifyEmail(EmailVerificationRequest emailVerificationRequest) {
+        Optional<VerificationCode > verificationCode = verificationCodeRepository
+                .findByEmailAndCode(emailVerificationRequest.getEmail(), emailVerificationRequest.getCode());
+
+        User user = userRepository.findByEmail(emailVerificationRequest.getEmail());
+
+        if (verificationCode.isEmpty()) {
+            return ResponseBuilder.badRequestResponse("Invalid verification code", StatusCodeEnum.USER0200);
+        }
+
+        if (verificationCode.get().getExpiredAt().isBefore(LocalDateTime.now())) {
+            return ResponseBuilder.badRequestResponse("Verification code has expired", StatusCodeEnum.USER0200);
+        }
+
+        if (verificationCode.get().getConfirmedAt() != null) {
+            return ResponseBuilder.badRequestResponse("Email has been verified", StatusCodeEnum.USER0200);
+        }
+
+        if (user == null) {
+            return ResponseBuilder.badRequestResponse("User not found", StatusCodeEnum.USER0200);
+        }
+
+        user.setActivated(true);
+        verificationCode.get().setConfirmedAt(LocalDateTime.now());
+
+        userRepository.save(user);
+        verificationCodeRepository.save(verificationCode.get());
+
+        UserResponse userResponse = UserResponse.from(user);
+
+        UserLoginResponse userLoginResponse = UserLoginResponse.builder()
+                .userInfo(userResponse)
+                .accessToken(jwtService.generateToken(user))
+                .refreshToken(jwtService.refreshToken(user))
+                .build();
+
+        return ResponseBuilder.successResponse("Email verified",userLoginResponse, StatusCodeEnum.USER0200);
+    }
+
+    @Scheduled(cron = "0 0 0 * * ?")
+    public void cleanupExpiredVerificationCodes() {
+        LocalDateTime now = LocalDateTime.now();
+        verificationCodeRepository.deleteAllByExpiredAtBefore(now);
+    }
+
+    public void getAccessToken(OauthToken code) {
 
     }
 
