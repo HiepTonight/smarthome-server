@@ -36,15 +36,6 @@ spring:
     mongodb:
       uri: ${MONGODB_URI}
       database: ${MONGODB_DATABASE}
-  freemarker:
-    template-loader-path: classpath:/templates/
-    suffix: .ftl
-    cache: false
-  thymeleaf:
-    prefix: classpath:/templates/
-    suffix: .html
-    mode: HTML
-    cache: false
 
 app:
   verification-code-expiration-minutes: 15

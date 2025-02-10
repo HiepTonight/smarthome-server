@@ -8,28 +8,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-//import org.thymeleaf.TemplateEngine;
-//import org.thymeleaf.context.Context;
 
 @Service
 @RequiredArgsConstructor
 public class EmailService {
     private final JavaMailSender mailSender;
 
-//    private final TemplateEngine templateEngine;
-    @PostConstruct
-    public void init() {
-        sendVerificationEmail("hieptram40@gmail.com", "Hiep Tran", "123456", 5);
-    }
-
     public void sendVerificationEmail(String recipientEmail, 
                                       String recipientName, 
                                       String verificationCode, 
                                       int expirationMinutes) {
-
-//        Context context = getContext(recipientName, verificationCode, expirationMinutes);
-
-//        String htmlContent = templateEngine.process("email.html", context);
 
         String htmlContent = EmailTemplate.getVerificationEmail(
                 recipientName,

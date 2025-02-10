@@ -8,13 +8,12 @@ import com.hieptran.smarthome_server.dto.requests.*;
 import com.hieptran.smarthome_server.dto.responses.AccessTokenResponse;
 import com.hieptran.smarthome_server.dto.responses.UserLoginResponse;
 import com.hieptran.smarthome_server.dto.responses.UserResponse;
-import com.hieptran.smarthome_server.model.OauthToken;
+
 import com.hieptran.smarthome_server.model.User;
 import com.hieptran.smarthome_server.model.VerificationCode;
 import com.hieptran.smarthome_server.repository.OAuthTokenRepository;
 import com.hieptran.smarthome_server.repository.UserRepository;
 import com.hieptran.smarthome_server.utils.EncryptionUtils;
-import freemarker.template.TemplateException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -419,7 +418,7 @@ public class UserService {
         return ResponseEntity.ok(userRepository.existsByUsername(username));
     }
 
-    public void resendVerificationEmail(String email) throws TemplateException, IOException {
+    public void resendVerificationEmail(String email) {
         User user = userRepository.findByEmail(email);
 
         if (user == null) {
