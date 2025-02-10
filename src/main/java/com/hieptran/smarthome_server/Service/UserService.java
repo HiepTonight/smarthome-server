@@ -14,6 +14,7 @@ import com.hieptran.smarthome_server.model.VerificationCode;
 import com.hieptran.smarthome_server.repository.OAuthTokenRepository;
 import com.hieptran.smarthome_server.repository.UserRepository;
 import com.hieptran.smarthome_server.utils.EncryptionUtils;
+import freemarker.template.TemplateException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Objects;
@@ -417,7 +419,7 @@ public class UserService {
         return ResponseEntity.ok(userRepository.existsByUsername(username));
     }
 
-    public void resendVerificationEmail(String email) {
+    public void resendVerificationEmail(String email) throws TemplateException, IOException {
         User user = userRepository.findByEmail(email);
 
         if (user == null) {
