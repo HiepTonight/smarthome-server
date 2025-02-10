@@ -31,7 +31,7 @@ public class UserController {
         return userService.login(authenticationRequest);
     }
 
-    @PostMapping("/oauth/soccial-login")
+    @PostMapping("/oauth/social-login")
     public ResponseEntity<ApiResponse<String>> socialLogin() {
         return authService.generateAuthUrl();
     }
