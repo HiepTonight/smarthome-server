@@ -1,7 +1,6 @@
 package com.hieptran.smarthome_server.Service;
 
-import freemarker.template.Configuration;
-import freemarker.template.TemplateException;
+import com.hieptran.smarthome_server.utils.EmailTemplate;
 import jakarta.annotation.PostConstruct;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -9,11 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import org.springframework.ui.freemarker.FreeMarkerTemplateUtils;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 //import org.thymeleaf.TemplateEngine;
 //import org.thymeleaf.context.Context;
 
@@ -22,35 +16,29 @@ import java.util.Map;
 public class EmailService {
     private final JavaMailSender mailSender;
 
-    private final Configuration freeMarkerConfiguration;
-
 //    private final TemplateEngine templateEngine;
-
     @PostConstruct
-    public void init() throws TemplateException, IOException {
+    public void init() {
         sendVerificationEmail("hieptram40@gmail.com", "Hiep Tran", "123456", 5);
     }
 
     public void sendVerificationEmail(String recipientEmail, 
                                       String recipientName, 
                                       String verificationCode, 
-                                      int expirationMinutes) throws IOException, TemplateException {
+                                      int expirationMinutes) {
 
 //        Context context = getContext(recipientName, verificationCode, expirationMinutes);
 
-//        String htmlContent = templateEngine.process("email-verification.ftl", context);
+//        String htmlContent = templateEngine.process("email.html", context);
 
-        Map<String, Object> model = new HashMap<>();
-        model.put("recipientName", recipientName);
-        model.put("verificationCode", verificationCode);
-        model.put("expirationMinutes", expirationMinutes);
-        model.put("verificationUrl", "https://example.com/verify?code=" + verificationCode);
-        model.put("supportUrl", "https://home-pod.vercel.app/how-it-works");
-        model.put("companyAddress", "Thanh Xuan, Ha Noi, Viet Nam");
-        model.put("settingsUrl", "https://example.com/settings");
-
-        String htmlContent = FreeMarkerTemplateUtils.processTemplateIntoString(
-                freeMarkerConfiguration.getTemplate("email-verification.ftl"), model
+        String htmlContent = EmailTemplate.getVerificationEmail(
+                recipientName,
+                verificationCode,
+                expirationMinutes,
+                "https://example.com/verify?code=" + verificationCode,
+                "https://home-pod.vercel.app/how-it-works",
+                "Thanh Xuan, Ha Noi, Viet Nam",
+                "https://example.com/settings"
         );
 
         MimeMessage message = mailSender.createMimeMessage();
@@ -75,7 +63,7 @@ public class EmailService {
 
         mailSender.send(message);
     }
-
+//
 //    private Context getContext(String recipientName, String verificationCode, int expirationMinutes) {
 //        Context context = new Context();
 //        context.setVariable("logoUrl", "https://example.com/logo.png");
