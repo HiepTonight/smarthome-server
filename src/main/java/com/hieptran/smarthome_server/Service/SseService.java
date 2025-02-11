@@ -1,10 +1,8 @@
 package com.hieptran.smarthome_server.Service;
 
 import com.hieptran.smarthome_server.dto.EventCodeEnum;
-import com.hieptran.smarthome_server.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;

@@ -1,7 +1,7 @@
 server:
-port: ${PORT}
-servlet:
-  context-path: /api/v1
+  port: ${PORT:8080}
+  servlet:
+    context-path: /api/v1
 
 spring:
   threads:
@@ -12,8 +12,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${MAIL_USERNAME:overly04@gmail.com}
+    password: ${MAIL_PASSWORD:pbwo ynap qpkg ijln}
     properties:
       mail:
         smtp:
@@ -25,24 +25,33 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
-            redirect-uri: ${GOOGLE_REDIRECT_URI}
+            client-id: ${GOOGLE_CLIENT_ID:990560564943-b35chqgl3oe3mfa1tpa0ubd94idlo3un.apps.googleusercontent.com}
+            client-secret: ${GOOGLE_CLIENT_SECRET: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}
+            redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:5173/oauth}
             user-info-uri: "https://www.googleapis.com/oauth2/v3/userinfo"
   #            resource-server:
   #              opaque-token:
   #                introspection-uri: "https://www.googleapis.com"
   data:
     mongodb:
-      uri: ${MONGODB_URI}
-      database: ${MONGODB_DATABASE}
+      uri: ${MONGODB_URI:mongodb+srv://hieptram40:123@cluster0.02rer4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0}
+      database: ${MONGODB_DATABASE:smarthome-iot}
+  freemarker:
+    template-loader-path: classpath:/templates/
+    suffix: .ftl
+    cache: false
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    cache: false
 
 app:
   verification-code-expiration-minutes: 15
 
 mqtt:
-  host: ${MQTT_HOST}
-  port: ${MQTT_PORT}
+  host: ${MQTT_HOST:897e4e4bd28b411ba2464a4019281121.s1.eu.hivemq.cloud}
+  port: ${MQTT_PORT:8883}
   username: my_mqtt
   password: hellomqtt
   topic:
@@ -51,11 +60,11 @@ mqtt:
   homeId: 675d1648a9e8034a78b32495
 
 encrypt:
-  secret: ${ENCRYPT_SECRET}
+  secret: ${ENCRYPT_SECRET:7BSa3T8VP5khAN4Y1faal6q2HNkwMRxn8cO70r202magNkDo4GYPrU9QtlzCZjcb}
 
 jwt:
-  secret: ${JWT_SECRET}
-  expire: ${JWT_EXPIRE}
+  secret: ${JWT_SECRET:e54c785247bbe95014719bbf1fd494ff3ada0c854d333e0d8ee0af418e237ce1349146558ffe96a262fd2fb077821665c54986a4349491cd07689d39ee07e4f8}
+  expire: ${JWT_EXPIRE:1209600000}
 
 socket-server:
   port: 8081
