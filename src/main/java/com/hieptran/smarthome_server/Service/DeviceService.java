@@ -2,11 +2,10 @@ package com.hieptran.smarthome_server.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hieptran.smarthome_server.dto.ApiResponse;
+import com.hieptran.smarthome_server.dto.EventCodeEnum;
 import com.hieptran.smarthome_server.dto.StatusCodeEnum;
 import com.hieptran.smarthome_server.dto.builder.ResponseBuilder;
 import com.hieptran.smarthome_server.dto.requests.DeviceRequest;
-import com.hieptran.smarthome_server.dto.requests.SettingRequest;
-import com.hieptran.smarthome_server.dto.requests.TempAutoRequest;
 import com.hieptran.smarthome_server.dto.responses.DeviceResponse;
 import com.hieptran.smarthome_server.model.Device;
 import com.hieptran.smarthome_server.model.Home;
@@ -24,6 +23,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +36,8 @@ public class DeviceService {
     private final MqttService mqttService;
 
     private final UserService userService;
+
+    private final SseService sseService;
 
     @Value("${mqtt.topic.homepod}")
     private String topic;
@@ -117,6 +121,9 @@ public class DeviceService {
             mqttService.publish(homePodId, getNameAndStatus(device.getHomePodId()));
 
             DeviceResponse response = DeviceResponse.fromDevice(device);
+
+            sseService.send(homePodId, EventCodeEnum.DEVICE_UPDATE_EVENT, EventCodeEnum.DEVICE_UPDATE_EVENT, List.of(response));
+
             return ResponseBuilder.successResponse("Device triggered", response, StatusCodeEnum.DEVICE0300);
 
         } catch (Exception e) {
@@ -156,11 +163,6 @@ public class DeviceService {
 //            throw new RuntimeException("Failed to apply device setting");
 //        }
 //    }
-
-    public void sendDeviceUpdate(Device device) throws IOException {
-        SseEmitter emitter = new SseEmitter();
-        emitter.send(SseEmitter.event().data(DeviceResponse.fromDevice(device)));
-    }
 
     private void processDoor(int status, String homePodId) {
         String message = String.format("{\"door\": %d}", status);
