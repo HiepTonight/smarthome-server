@@ -1,6 +1,7 @@
 package com.hieptran.smarthome_server.controller;
 
 import com.hieptran.smarthome_server.Service.HomeService;
+import com.hieptran.smarthome_server.Service.SseService;
 import com.hieptran.smarthome_server.dto.ApiResponse;
 import com.hieptran.smarthome_server.dto.requests.HomeRequest;
 import com.hieptran.smarthome_server.dto.requests.SettingRequest;
@@ -11,7 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.Objects;
 
@@ -20,6 +23,8 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class HomeController {
     private final HomeService homeService;
+
+    private final SseService sseService;
 
     @PreAuthorize("isAuthenticated()")
     @PostMapping()
@@ -57,5 +62,10 @@ public class HomeController {
     @PostMapping("/setting/{id}")
     public ResponseEntity<ApiResponse<HomeOption>> setSetting(@PathVariable("id") String id, @RequestBody SettingRequest settingRequest) {
         return homeService.applyHomeOption(settingRequest, id);
+    }
+
+    @GetMapping("/sse")
+    public SseEmitter streamEvents(@RequestParam("homePodId")String homePodId) throws AccessDeniedException {
+        return sseService.addEmitter(homePodId);
     }
 }

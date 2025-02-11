@@ -1,5 +1,5 @@
 server:
-  port: ${PORT:8080}
+  port: ${PORT}
   servlet:
     context-path: /api/v1
 
@@ -9,14 +9,40 @@ spring:
       enabled: true
   application:
     name: smarthome-server
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: ${GOOGLE_REDIRECT_URI}
+            user-info-uri: "https://www.googleapis.com/oauth2/v3/userinfo"
+  #            resource-server:
+  #              opaque-token:
+  #                introspection-uri: "https://www.googleapis.com"
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb+srv://hieptram40:123@cluster0.02rer4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0}
-      database: ${MONGODB_DATABASE:smarthome-iot}
+      uri: ${MONGODB_URI}
+      database: ${MONGODB_DATABASE}
+
+app:
+  verification-code-expiration-minutes: 15
 
 mqtt:
-  host: "897e4e4bd28b411ba2464a4019281121.s1.eu.hivemq.cloud"
-  port: 8883
+  host: ${MQTT_HOST}
+  port: ${MQTT_PORT}
   username: my_mqtt
   password: hellomqtt
   topic:
@@ -24,9 +50,12 @@ mqtt:
     homepod: "homePod/123"
   homeId: 675d1648a9e8034a78b32495
 
+encrypt:
+  secret: ${ENCRYPT_SECRET}
+
 jwt:
-  secret: ${JWT_SECRET:e54c785247bbe95014719bbf1fd494ff3ada0c854d333e0d8ee0af418e237ce1349146558ffe96a262fd2fb077821665c54986a4349491cd07689d39ee07e4f8}
-  expire: ${JWT_EXPIRE:1209600000}
+  secret: ${JWT_SECRET}
+  expire: ${JWT_EXPIRE}
 
 socket-server:
   port: 8081
