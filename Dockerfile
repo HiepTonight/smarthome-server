@@ -1,7 +1,7 @@
 FROM maven:3.9.8-eclipse-temurin-21 as build
 WORKDIR ./app
 COPY . .
-RUN mvn install -DskipTests=true
+RUN mvn clean package -DskipTests=true
 
 FROM alpine:3.19
 
